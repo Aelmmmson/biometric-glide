@@ -4,6 +4,7 @@ import { CheckCircle, Camera, FileText, Fingerprint as FingerprintIcon, Send } f
 import { StepCard } from '@/components/StepCard';
 import { NavigationButtons } from '@/components/NavigationButtons';
 import { Button } from '@/components/ui/button';
+import { PrivacyModal } from '@/components/PrivacyModal';
 import { useBiometric } from '@/contexts/BiometricContext';
 
 export function Review() {
@@ -44,15 +45,14 @@ export function Review() {
           <div className="space-y-4">
             <h2 className="text-3xl font-bold text-green-600">Verification Complete!</h2>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Your biometric data has been successfully captured and securely stored. 
-              The verification process is now complete.
+              Your biometric data has been captured and securely stored.
             </p>
           </div>
 
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 max-w-md mx-auto">
-            <h3 className="font-semibold text-green-800 mb-2">What happens next?</h3>
+            <h3 className="font-semibold text-green-800 mb-2">What's next?</h3>
             <p className="text-sm text-green-600">
-              Your information will be processed within 24-48 hours. You'll receive a confirmation email once verification is approved.
+              Processing takes 24-48 hours. You'll receive confirmation via email.
             </p>
           </div>
 
@@ -76,7 +76,7 @@ export function Review() {
       >
         <h2 className="text-3xl font-bold mb-2">Review & Submit</h2>
         <p className="text-muted-foreground mb-8">
-          Please review all captured information before submitting for verification.
+          Review your information before submitting.
         </p>
 
         <div className="space-y-6 mb-8">
@@ -93,7 +93,7 @@ export function Review() {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold mb-1">Photo</h3>
-                <p className="text-sm text-muted-foreground">Profile picture captured</p>
+                <p className="text-sm text-muted-foreground">Captured</p>
               </div>
               <div className="flex-shrink-0">
                 {state.data.photo && (
@@ -120,7 +120,7 @@ export function Review() {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold mb-1">Signature</h3>
-                <p className="text-sm text-muted-foreground">Digital signature captured</p>
+                <p className="text-sm text-muted-foreground">Captured</p>
               </div>
               <div className="flex-shrink-0">
                 {state.data.signature && (
@@ -149,7 +149,7 @@ export function Review() {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold mb-1">Passport</h3>
-                <p className="text-sm text-muted-foreground">Identity document verified</p>
+                <p className="text-sm text-muted-foreground">Verified</p>
               </div>
               <div className="flex-shrink-0">
                 {state.data.passport && (
@@ -178,7 +178,7 @@ export function Review() {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold mb-1">Fingerprint</h3>
-                <p className="text-sm text-muted-foreground">Biometric template created</p>
+                <p className="text-sm text-muted-foreground">Captured</p>
               </div>
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -196,14 +196,16 @@ export function Review() {
           transition={{ delay: 0.5 }}
           className="space-y-6"
         >
-          <div className="bg-muted/50 rounded-xl p-6">
+          <div className="bg-muted/50 rounded-xl p-6 text-center">
             <h3 className="font-semibold mb-3">Privacy & Consent</h3>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>• Your biometric data is encrypted using industry-standard protocols</p>
-              <p>• Information will only be used for identity verification purposes</p>
-              <p>• Data is stored securely and complies with privacy regulations</p>
-              <p>• You have the right to request data deletion at any time</p>
-            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              By submitting, you agree to our data collection and processing practices.
+            </p>
+            <PrivacyModal>
+              <Button variant="link" className="text-primary hover:underline p-0">
+                View Privacy Policy
+              </Button>
+            </PrivacyModal>
           </div>
 
           <div className="flex justify-center">

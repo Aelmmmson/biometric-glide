@@ -35,11 +35,11 @@ interface ProgressSidebarProps {
 
 export function ProgressSidebar({ currentStep, completedSteps }: ProgressSidebarProps) {
   return (
-    <div className="bg-sidebar text-sidebar-foreground p-8 rounded-2xl shadow-card h-fit">
+    <div className="bg-sidebar text-sidebar-foreground p-8 rounded-2xl shadow-card h-fit sticky top-8">
       <div className="mb-8">
         <h2 className="text-2xl font-bold mb-2">Biometric Capture</h2>
         <p className="text-sidebar-foreground/70">
-          Complete all steps to secure your identity verification.
+          Complete all steps to verify your identity.
         </p>
       </div>
 
@@ -100,7 +100,7 @@ export function ProgressSidebar({ currentStep, completedSteps }: ProgressSidebar
 
       <div className="mt-8 pt-6 border-t border-sidebar-border">
         <p className="text-sm text-sidebar-foreground/60">
-          Your data is encrypted and secure throughout the process.
+          Your data is encrypted and secure.
         </p>
       </div>
     </div>
