@@ -110,20 +110,20 @@ export function PhotoSignature() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        <h2 className="text-3xl font-bold mb-2">Photo & Signature Capture</h2>
+        <h2 className="text-2xl font-bold mb-1">Photo & Signature Capture</h2>
         <p className="text-muted-foreground mb-8">
           Capture or upload your photo and signature to begin the verification process.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Photo Section */}
-          <div className="space-y-4">
+          <div className="space-y-2">
             <h3 className="text-xl font-semibold flex items-center gap-2">
               <Camera className="w-5 h-5 text-primary" />
               Photo
             </h3>
             
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-2">
               <Button
                 variant={photoMode === 'capture' ? 'default' : 'outline'}
                 onClick={() => setPhotoMode('capture')}
@@ -198,13 +198,13 @@ export function PhotoSignature() {
           </div>
 
           {/* Signature Section */}
-          <div className="space-y-4">
+          <div className="space-y-2">
             <h3 className="text-xl font-semibold flex items-center gap-2">
               <Signature className="w-5 h-5 text-primary" />
               Signature
             </h3>
             
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-2">
               <Button
                 variant={signatureMode === 'draw' ? 'default' : 'outline'}
                 onClick={() => setSignatureMode('draw')}
@@ -246,7 +246,7 @@ export function PhotoSignature() {
                     <Button
                       variant="outline"
                       onClick={clearSignature}
-                      className="rounded-full"
+                      className="rounded-full text-xs"
                     >
                       Clear
                     </Button>
