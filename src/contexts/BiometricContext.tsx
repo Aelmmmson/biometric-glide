@@ -3,7 +3,11 @@ import { createContext, useContext, useReducer, ReactNode } from 'react';
 interface BiometricData {
   photo: string | null;
   signature: string | null;
-  passport: string | null;
+  identification: {
+    type: 'passport' | 'national_id' | 'voter_id' | 'driver_license' | null;
+    front: string | null;
+    back: string | null;
+  };
   fingerprint: string | null;
 }
 
@@ -15,10 +19,13 @@ interface BiometricState {
 
 type BiometricAction =
   | { type: 'SET_STEP'; step: number }
-  | { type: 'SET_PHOTO'; photo: string }
-  | { type: 'SET_SIGNATURE'; signature: string }
-  | { type: 'SET_PASSPORT'; passport: string }
-  | { type: 'SET_FINGERPRINT'; fingerprint: string }
+  | { type: 'SET_PHOTO'; photo: string | null }
+  | { type: 'SET_SIGNATURE'; signature: string | null }
+  | { type: 'SET_IDENTIFICATION_TYPE'; idType: 'passport' | 'national_id' | 'voter_id' | 'driver_license' }
+  | { type: 'SET_IDENTIFICATION_FRONT'; front: string }
+  | { type: 'SET_IDENTIFICATION_BACK'; back: string }
+  | { type: 'CLEAR_IDENTIFICATION' }
+  | { type: 'SET_FINGERPRINT'; fingerprint: string | null }
   | { type: 'SUBMIT_SUCCESS' }
   | { type: 'RESET' };
 
@@ -27,7 +34,11 @@ const initialState: BiometricState = {
   data: {
     photo: null,
     signature: null,
-    passport: null,
+    identification: {
+      type: null,
+      front: null,
+      back: null,
+    },
     fingerprint: null,
   },
   isSubmitted: false,
@@ -41,8 +52,52 @@ function biometricReducer(state: BiometricState, action: BiometricAction): Biome
       return { ...state, data: { ...state.data, photo: action.photo } };
     case 'SET_SIGNATURE':
       return { ...state, data: { ...state.data, signature: action.signature } };
-    case 'SET_PASSPORT':
-      return { ...state, data: { ...state.data, passport: action.passport } };
+    case 'SET_IDENTIFICATION_TYPE':
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          identification: { 
+            type: action.idType,
+            front: null,
+            back: null
+          } 
+        } 
+      };
+    case 'SET_IDENTIFICATION_FRONT':
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          identification: { 
+            ...state.data.identification,
+            front: action.front
+          } 
+        } 
+      };
+    case 'SET_IDENTIFICATION_BACK':
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          identification: { 
+            ...state.data.identification,
+            back: action.back
+          } 
+        } 
+      };
+    case 'CLEAR_IDENTIFICATION':
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          identification: { 
+            type: null,
+            front: null,
+            back: null
+          } 
+        } 
+      };
     case 'SET_FINGERPRINT':
       return { ...state, data: { ...state.data, fingerprint: action.fingerprint } };
     case 'SUBMIT_SUCCESS':

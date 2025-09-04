@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Signature, Image as ImageIcon } from 'lucide-react';
+import { Camera, Upload, Signature, Image as ImageIcon, X } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { NavigationButtons } from '@/components/NavigationButtons';
 import { Button } from '@/components/ui/button';
@@ -93,8 +93,18 @@ export function PhotoSignature() {
     }
   };
 
-  const handleNext = () => {
+  const clearUploadedSignature = () => {
+    dispatch({ type: 'SET_SIGNATURE', signature: null });
+  };
+
+  const handleSubmit = () => {
+    // TODO: Add API call here
+    console.log('Submitting photo and signature data:', { photo: state.data.photo, signature: state.data.signature });
     dispatch({ type: 'SET_STEP', step: 2 });
+  };
+
+  const handleNext = () => {
+    handleSubmit();
   };
 
   const handleBack = () => {
@@ -102,6 +112,10 @@ export function PhotoSignature() {
   };
 
   const isNextDisabled = !state.data.photo || !state.data.signature;
+
+  const clearPhoto = () => {
+    dispatch({ type: 'SET_PHOTO', photo: null });
+  };
 
   return (
     <StepCard>
@@ -123,23 +137,29 @@ export function PhotoSignature() {
               Photo
             </h3>
             
-            <div className="flex gap-2 mb-2">
-              <Button
-                variant={photoMode === 'capture' ? 'default' : 'outline'}
-                onClick={() => setPhotoMode('capture')}
-                className="rounded-full"
-              >
-                <Camera className="w-4 h-4 mr-2" />
-                Capture
-              </Button>
-              <Button
-                variant={photoMode === 'upload' ? 'default' : 'outline'}
-                onClick={() => setPhotoMode('upload')}
-                className="rounded-full"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload
-              </Button>
+            <div className="flex gap-4 justify-center mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="photoMode"
+                  checked={photoMode === 'capture'}
+                  onChange={() => setPhotoMode('capture')}
+                  className="w-4 h-4 text-primary"
+                />
+                <Camera className="w-4 h-4" />
+                <span>Capture</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="photoMode"
+                  checked={photoMode === 'upload'}
+                  onChange={() => setPhotoMode('upload')}
+                  className="w-4 h-4 text-primary"
+                />
+                <Upload className="w-4 h-4" />
+                <span>Upload</span>
+              </label>
             </div>
 
             <motion.div
@@ -147,10 +167,16 @@ export function PhotoSignature() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
-              className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-accent/50"
+              className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-accent/50 relative"
             >
               {state.data.photo ? (
                 <div className="space-y-4">
+                  <button
+                    onClick={clearPhoto}
+                    className="absolute top-2 right-2 w-8 h-8 bg-destructive text-white rounded-full flex items-center justify-center hover:bg-destructive/80 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                   <img 
                     src={state.data.photo} 
                     alt="Captured photo" 
@@ -204,23 +230,29 @@ export function PhotoSignature() {
               Signature
             </h3>
             
-            <div className="flex gap-2 mb-2">
-              <Button
-                variant={signatureMode === 'draw' ? 'default' : 'outline'}
-                onClick={() => setSignatureMode('draw')}
-                className="rounded-full"
-              >
-                <Signature className="w-4 h-4 mr-2" />
-                Draw
-              </Button>
-              <Button
-                variant={signatureMode === 'upload' ? 'default' : 'outline'}
-                onClick={() => setSignatureMode('upload')}
-                className="rounded-full"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload
-              </Button>
+            <div className="flex gap-4 justify-center mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="signatureMode"
+                  checked={signatureMode === 'draw'}
+                  onChange={() => setSignatureMode('draw')}
+                  className="w-4 h-4 text-primary"
+                />
+                <Signature className="w-4 h-4" />
+                <span>Draw</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="signatureMode"
+                  checked={signatureMode === 'upload'}
+                  onChange={() => setSignatureMode('upload')}
+                  className="w-4 h-4 text-primary"
+                />
+                <Upload className="w-4 h-4" />
+                <span>Upload</span>
+              </label>
             </div>
 
             <motion.div
@@ -228,10 +260,18 @@ export function PhotoSignature() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
-              className="border-2 border-dashed border-border rounded-xl p-4 bg-accent/50"
+              className="border-2 border-dashed border-border rounded-xl p-4 bg-accent/50 relative"
             >
               {signatureMode === 'draw' ? (
                 <div className="space-y-4">
+                  {state.data.signature && (
+                    <button
+                      onClick={clearSignature}
+                      className="absolute top-2 right-2 w-8 h-8 bg-destructive text-white rounded-full flex items-center justify-center hover:bg-destructive/80 transition-colors z-10"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                   <canvas
                     ref={canvasRef}
                     width={300}
@@ -278,7 +318,13 @@ export function PhotoSignature() {
                     />
                   </div>
                   {state.data.signature && (
-                    <div className="mt-4">
+                    <div className="mt-4 relative">
+                      <button
+                        onClick={clearUploadedSignature}
+                        className="absolute top-2 right-2 w-6 h-6 bg-destructive text-white rounded-full flex items-center justify-center hover:bg-destructive/80 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                       <img 
                         src={state.data.signature} 
                         alt="Uploaded signature" 
@@ -295,12 +341,24 @@ export function PhotoSignature() {
           </div>
         </div>
 
+        {!isNextDisabled && (
+          <div className="flex justify-center pt-6">
+            <Button
+              onClick={handleSubmit}
+              className="rounded-full px-8 py-3 gradient-primary shadow-button"
+            >
+              Submit Photo & Signature
+            </Button>
+          </div>
+        )}
+
         <NavigationButtons
           currentStep={1}
           totalSteps={4}
           onBack={handleBack}
           onNext={handleNext}
           isNextDisabled={isNextDisabled}
+          showNext={false}
         />
       </motion.div>
     </StepCard>

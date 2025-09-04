@@ -28,12 +28,8 @@ const steps = [
   },
 ];
 
-interface ProgressSidebarProps {
-  currentStep: number;
-  completedSteps: number[];
-}
 
-export function ProgressSidebar({ currentStep, completedSteps }: ProgressSidebarProps) {
+export function ProgressSidebar() {
   return (
     <div className="bg-sidebar text-sidebar-foreground p-8 rounded-2xl shadow-card h-fit sticky top-8">
       <div className="mb-8">
@@ -103,6 +99,39 @@ export function ProgressSidebar({ currentStep, completedSteps }: ProgressSidebar
           Your data is encrypted and secure.
         </p>
       </div>
+    </div>
+  );
+}
+
+interface MobileStepIndicatorProps {
+  step: number;
+  title: string;
+  isActive: boolean;
+  isCompleted: boolean;
+  hasData?: boolean;
+}
+
+function MobileStepIndicator({ step, title, isActive, isCompleted, hasData }: MobileStepIndicatorProps) {
+  return (
+    <div className="flex flex-col items-center space-y-1 flex-1">
+      <div className={`
+        w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300
+        ${isCompleted 
+          ? 'bg-green-500 text-white' 
+          : isActive 
+            ? 'bg-primary text-white animate-pulse' 
+            : hasData 
+              ? 'bg-primary/20 text-primary' 
+              : 'bg-muted text-muted-foreground'
+        }
+      `}>
+        {isCompleted ? '✓' : step}
+      </div>
+      <span className={`text-xs font-medium text-center ${
+        isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-muted-foreground'
+      }`}>
+        {title}
+      </span>
     </div>
   );
 }
