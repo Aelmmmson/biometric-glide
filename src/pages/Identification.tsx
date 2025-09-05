@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Upload, Scan, X, CreditCard, Fingerprint as FingerprintIcon, Vote } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
-import { NavigationButtons } from '@/components/NavigationButtons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useBiometric } from '@/contexts/BiometricContext';
@@ -54,7 +53,7 @@ export function Identification() {
 
   const handleScanFront = () => {
     setTimeout(() => {
-      const simulatedId = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMzMzNzNjIiByeD0iOCIvPgo8cGF0aCBkPSJNMTUgMzBIOTBWNjBIMTV6IiBmaWxsPSIjNGY4YWY3Ii8+CjxwYXRoIGQ9Ik0xNSA4MEgyNDBWMTAwSDE1eiIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTUgMTEwSDIwMFYxMzBIMTV6IiBmaWxsPSIjOTRhM2I4Ii8+CjxwYXRoIGQ9Ik0xNSAxNDBIMTgwVjE2MEgxNXoiIGZpbGw9IiM5NGEzYjgiLz4KPHN2Zz4=';
+      const simulatedId = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMzMzNzNjIiByeD0iOCIvPgo8cGF0aCBkPSJNMTUgMzBIOTBWNjBIMTV6IiBmaWxsPSIjNGY4YWY3Ii8+CjxwYXRoIGQ9Ik0xNSA4MEgyNDBWMTAwSDE1eiIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTUgMTEwSDIwMFYxMzBIMTV6IiBmaWxsPSIjOTRhM2I4Ii8+CjxwYXRoIGQ9Ik0xNSAxNDBIMTgwVjE2MEgxNXoiIGZpbGw9IiM5NGEzYjgiLz4KPC9zdmc+';
       dispatch({ type: 'SET_ID_FRONT', idFront: simulatedId });
     }, 1500);
   };
@@ -209,99 +208,32 @@ export function Identification() {
               </div>
             </div>
 
-            {/* Front ID Capture */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold">
-                  {selectedIdType?.requiresBoth ? 'Front Side' : selectedIdType?.label}
-                </h4>
-                {selectedIdType?.requiresBoth && <Badge variant="secondary">Required</Badge>}
-              </div>
-              
-              <motion.div
-                className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-accent/30 relative"
-              >
-                {state.data.idFront ? (
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleClearFront}
-                      className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                    <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
-                      <img 
-                        src={state.data.idFront} 
-                        alt="ID front" 
-                        className="max-w-xs max-h-32 object-contain rounded-lg"
-                      />
-                    </div>
-                    <p className="text-sm text-green-600 font-semibold">✓ Captured successfully</p>
-                  </div>
-                ) : captureMode === 'scan' ? (
-                  <div className="space-y-4">
-                    <Scan className="w-12 h-12 text-primary mx-auto" />
-                    <div>
-                      <p className="font-medium">Ready to scan</p>
-                      <p className="text-sm text-muted-foreground">Position document and scan</p>
-                    </div>
-                    <Button 
-                      onClick={handleScanFront}
-                      className="rounded-full gradient-primary"
-                    >
-                      <Scan className="w-4 h-4 mr-2" />
-                      Start Scan
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <FileText className="w-12 h-12 text-primary mx-auto" />
-                    <div>
-                      <p className="font-medium">Upload document image</p>
-                      <p className="text-sm text-muted-foreground">JPG, PNG • Max 10MB</p>
-                    </div>
-                    <Button 
-                      onClick={() => frontInputRef.current?.click()}
-                      className="rounded-full gradient-primary"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Choose File
-                    </Button>
-                    <input
-                      ref={frontInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFrontUpload}
-                      className="hidden"
-                    />
-                  </div>
-                )}
-              </motion.div>
-            </div>
-
-            {/* Back ID Capture (if required) */}
-            {selectedIdType?.requiresBoth && (
+            {/* ID Capture Sections */}
+            <div className={`grid ${selectedIdType?.requiresBoth ? 'md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
+              {/* Front ID Capture */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold">Back Side</h4>
-                  <Badge variant="secondary">Required</Badge>
+                  <h4 className="font-semibold">
+                    {selectedIdType?.requiresBoth ? 'Front Side' : selectedIdType?.label}
+                  </h4>
+                  {selectedIdType?.requiresBoth && <Badge variant="secondary">Required</Badge>}
                 </div>
                 
                 <motion.div
-                  className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-accent/30 relative"
+                  className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-accent/30 relative min-h-[250px] flex items-center justify-center"
                 >
-                  {state.data.idBack ? (
+                  {state.data.idFront ? (
                     <div className="space-y-3">
                       <button
-                        onClick={handleClearBack}
+                        onClick={handleClearFront}
                         className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
                       <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
                         <img 
-                          src={state.data.idBack} 
-                          alt="ID back" 
+                          src={state.data.idFront} 
+                          alt="ID front" 
                           className="max-w-xs max-h-32 object-contain rounded-lg"
                         />
                       </div>
@@ -311,11 +243,11 @@ export function Identification() {
                     <div className="space-y-4">
                       <Scan className="w-12 h-12 text-primary mx-auto" />
                       <div>
-                        <p className="font-medium">Ready to scan back</p>
-                        <p className="text-sm text-muted-foreground">Flip document and scan</p>
+                        <p className="font-medium">Ready to scan</p>
+                        <p className="text-sm text-muted-foreground">Position document and scan</p>
                       </div>
                       <Button 
-                        onClick={handleScanBack}
+                        onClick={handleScanFront}
                         className="rounded-full gradient-primary"
                       >
                         <Scan className="w-4 h-4 mr-2" />
@@ -326,61 +258,137 @@ export function Identification() {
                     <div className="space-y-4">
                       <FileText className="w-12 h-12 text-primary mx-auto" />
                       <div>
-                        <p className="font-medium">Upload back side image</p>
+                        <p className="font-medium">Upload document image</p>
                         <p className="text-sm text-muted-foreground">JPG, PNG • Max 10MB</p>
                       </div>
                       <Button 
-                        onClick={() => backInputRef.current?.click()}
+                        onClick={() => frontInputRef.current?.click()}
                         className="rounded-full gradient-primary"
                       >
                         <Upload className="w-4 h-4 mr-2" />
                         Choose File
                       </Button>
                       <input
-                        ref={backInputRef}
+                        ref={frontInputRef}
                         type="file"
                         accept="image/*"
-                        onChange={handleBackUpload}
+                        onChange={handleFrontUpload}
                         className="hidden"
                       />
                     </div>
                   )}
                 </motion.div>
               </div>
-            )}
 
-            {/* Submit Button */}
-            <div className="flex justify-center mt-6">
-              <Button
-                onClick={handleSubmit}
-                disabled={!canSubmit || isSubmitting}
-                className="rounded-full px-8 py-3 gradient-primary shadow-button"
-              >
-                {isSubmitting ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                    />
-                    Submitting...
-                  </>
-                ) : (
-                  'Submit Identification'
-                )}
-              </Button>
+              {/* Back ID Capture (if required) */}
+              {selectedIdType?.requiresBoth && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">Back Side</h4>
+                    <Badge variant="secondary">Required</Badge>
+                  </div>
+                  
+                  <motion.div
+                    className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-accent/30 relative min-h-[250px] flex items-center justify-center"
+                  >
+                    {state.data.idBack ? (
+                      <div className="space-y-3">
+                        <button
+                          onClick={handleClearBack}
+                          className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
+                          <img 
+                            src={state.data.idBack} 
+                            alt="ID back" 
+                            className="max-w-xs max-h-32 object-contain rounded-lg"
+                          />
+                        </div>
+                        <p className="text-sm text-green-600 font-semibold">✓ Captured successfully</p>
+                      </div>
+                    ) : captureMode === 'scan' ? (
+                      <div className="space-y-4">
+                        <Scan className="w-12 h-12 text-primary mx-auto" />
+                        <div>
+                          <p className="font-medium">Ready to scan back</p>
+                          <p className="text-sm text-muted-foreground">Flip document and scan</p>
+                        </div>
+                        <Button 
+                          onClick={handleScanBack}
+                          className="rounded-full gradient-primary"
+                        >
+                          <Scan className="w-4 h-4 mr-2" />
+                          Start Scan
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <FileText className="w-12 h-12 text-primary mx-auto" />
+                        <div>
+                          <p className="font-medium">Upload back side image</p>
+                          <p className="text-sm text-muted-foreground">JPG, PNG • Max 10MB</p>
+                        </div>
+                        <Button 
+                          onClick={() => backInputRef.current?.click()}
+                          className="rounded-full gradient-primary"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Choose File
+                        </Button>
+                        <input
+                          ref={backInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBackUpload}
+                          className="hidden"
+                        />
+                      </div>
+                    )}
+                  </motion.div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        <NavigationButtons
-          currentStep={2}
-          totalSteps={4}
-          onBack={handleBack}
-          onNext={() => {}}
-          isNextDisabled={true}
-          hideNext={true}
-        />
+        {/* Navigation and Submit Button */}
+        <div className="flex items-center justify-between mt-8">
+          {/* Back Button */}
+          <Button
+            onClick={handleBack}
+            variant="outline"
+            className="rounded-full px-6 py-2"
+          >
+            Back
+          </Button>
+          
+          {/* Submit Button (Centered) */}
+          <Button
+            onClick={handleSubmit}
+            disabled={!canSubmit || isSubmitting}
+            className="rounded-full px-8 py-3 gradient-primary shadow-button"
+          >
+            {isSubmitting ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                />
+                Submitting...
+              </>
+            ) : (
+              'Submit Identification'
+            )}
+          </Button>
+          
+          {/* Step Indicator */}
+          <div className="text-sm text-muted-foreground">
+            Step 2 of 4
+          </div>
+        </div>
       </motion.div>
     </StepCard>
   );

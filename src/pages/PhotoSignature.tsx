@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Upload, Signature, Image as ImageIcon, X } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
-import { NavigationButtons } from '@/components/NavigationButtons';
 import { Button } from '@/components/ui/button';
 import { useBiometric } from '@/contexts/BiometricContext';
 import { toast } from '@/hooks/use-toast';
@@ -176,10 +175,10 @@ export function PhotoSignature() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
-              className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-accent/50 relative"
+              className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-accent/50 relative min-h-[300px] flex items-center justify-center"
             >
               {state.data.photo ? (
-                <div className="space-y-4">
+                <div className="space-y-4 w-full">
                   <button
                     onClick={handleClearPhoto}
                     className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
@@ -274,10 +273,27 @@ export function PhotoSignature() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
-              className="border-2 border-dashed border-border rounded-xl p-4 bg-accent/50"
+              className="border-2 border-dashed border-border rounded-xl p-4 bg-accent/50 relative min-h-[300px] flex items-center justify-center"
             >
-              {signatureMode === 'draw' ? (
-                <div className="space-y-4">
+              {state.data.signature ? (
+                <div className="space-y-4 text-center w-full">
+                  <button
+                    onClick={() => dispatch({ type: 'SET_SIGNATURE', signature: null })}
+                    className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <img 
+                    src={state.data.signature} 
+                    alt="Signature" 
+                    className="max-h-20 mx-auto border border-border rounded"
+                  />
+                  <p className="text-sm text-green-600 font-semibold">
+                    ✓ Signature {signatureMode === 'draw' ? 'captured' : 'uploaded'} successfully
+                  </p>
+                </div>
+              ) : signatureMode === 'draw' ? (
+                <div className="space-y-4 w-full">
                   <canvas
                     ref={canvasRef}
                     width={300}
@@ -288,23 +304,17 @@ export function PhotoSignature() {
                     onMouseUp={stopDrawing}
                     onMouseLeave={stopDrawing}
                   />
-                  <div className="flex gap-2 justify-center">
-                    <Button
-                      variant="outline"
-                      onClick={clearSignature}
-                      className="rounded-full text-xs"
-                    >
-                      Clear
-                    </Button>
-                  </div>
                   {state.data.signature && (
-                    <p className="text-sm text-green-600 font-semibold text-center">
-                      ✓ Signature captured successfully
-                    </p>
+                    <button
+                      onClick={clearSignature}
+                      className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   )}
                 </div>
               ) : (
-                <div className="space-y-4 text-center py-8">
+                <div className="space-y-4 text-center w-full">
                   <Signature className="w-12 h-12 text-muted-foreground mx-auto" />
                   <div>
                     <p className="font-medium">Upload signature image</p>
@@ -323,32 +333,25 @@ export function PhotoSignature() {
                       className="hidden"
                     />
                   </div>
-                  {state.data.signature && (
-                    <div className="mt-4 relative">
-                      <button
-                        onClick={() => dispatch({ type: 'SET_SIGNATURE', signature: null })}
-                        className="absolute top-0 right-0 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                      <img 
-                        src={state.data.signature} 
-                        alt="Uploaded signature" 
-                        className="max-h-20 mx-auto border border-border rounded"
-                      />
-                      <p className="text-sm text-green-600 font-semibold mt-2">
-                        ✓ Signature uploaded successfully
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
             </motion.div>
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-center mt-8">
+        {/* Navigation and Submit Button */}
+        <div className="flex items-center justify-between mt-8">
+          {/* Back Button */}
+          <Button
+            onClick={handleBack}
+            variant="outline"
+            className="rounded-full px-6 py-2"
+            disabled={true}
+          >
+            Back
+          </Button>
+          
+          {/* Submit Button (Centered) */}
           <Button
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
@@ -364,19 +367,15 @@ export function PhotoSignature() {
                 Submitting...
               </>
             ) : (
-              'Submit Photo & Signature'
+              'Submit Identification'
             )}
           </Button>
+          
+          {/* Step Indicator */}
+          <div className="text-sm text-muted-foreground">
+            Step 1 of 4
+          </div>
         </div>
-
-        <NavigationButtons
-          currentStep={1}
-          totalSteps={4}
-          onBack={handleBack}
-          onNext={() => {}}
-          isNextDisabled={true}
-          hideNext={true}
-        />
       </motion.div>
     </StepCard>
   );

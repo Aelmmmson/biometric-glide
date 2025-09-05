@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, Camera, FileText, Fingerprint as FingerprintIcon, Send } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
-import { NavigationButtons } from '@/components/NavigationButtons';
 import { Button } from '@/components/ui/button';
 import { PrivacyModal } from '@/components/PrivacyModal';
 import { useBiometric } from '@/contexts/BiometricContext';
@@ -189,43 +188,42 @@ export function Review() {
           </motion.div>
         </div>
 
-        {/* Consent and Submit */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="space-y-6"
-        >
-          <div className="flex justify-center">
-            <Button 
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="rounded-full px-8 py-3 gradient-primary shadow-button disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                  />
-                  Processing...
-                </>
-              ) : (
-                'Complete Process'
-              )}
-            </Button>
+        {/* Navigation and Submit Button */}
+        <div className="flex items-center justify-between mt-8">
+          {/* Back Button */}
+          <Button
+            onClick={handleBack}
+            variant="outline"
+            className="rounded-full px-6 py-2"
+          >
+            Back
+          </Button>
+          
+          {/* Complete Process Button (Centered) */}
+          <Button 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="rounded-full px-8 py-3 gradient-primary shadow-button disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                />
+                Processing...
+              </>
+            ) : (
+              'Complete Process'
+            )}
+          </Button>
+          
+          {/* Step Indicator */}
+          <div className="text-sm text-muted-foreground">
+            Step 4 of 4
           </div>
-        </motion.div>
-
-        <NavigationButtons
-          currentStep={4}
-          totalSteps={4}
-          onBack={handleBack}
-          onNext={() => {}}
-          isNextDisabled={true}
-          hideNext={true}
-        />
+        </div>
       </motion.div>
     </StepCard>
   );

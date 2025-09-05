@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Fingerprint as FingerprintIcon, CheckCircle, X } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
-import { NavigationButtons } from '@/components/NavigationButtons';
 import { Button } from '@/components/ui/button';
 import { useBiometric } from '@/contexts/BiometricContext';
 
@@ -11,11 +10,12 @@ export function Fingerprint() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleStartScan = () => {
     setIsScanning(true);
     setScanProgress(0);
-    
+
     // Simulate fingerprint scanning progress
     const interval = setInterval(() => {
       setScanProgress(prev => {
@@ -23,7 +23,7 @@ export function Fingerprint() {
           clearInterval(interval);
           setIsScanning(false);
           // Simulate fingerprint data
-          const simulatedFingerprint = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9Ijc1IiBjeT0iNzUiIHI9IjcwIiBmaWxsPSIjZjNmNGY2IiBzdHJva2U9IiM0Zjg0ZjciIHN0cm9rZS13aWR0aD0iMiIvPgo8cGF0aCBkPSJNNDAgNzVDNDAgNTUgNTUgNDAgNzUgNDBDOTUgNDAgMTEwIDU1IDExMCA3NSIgc3Ryb2tlPSIjMzc0MTUxIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz4KPHA+';
+          const simulatedFingerprint = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9Ijc1IiBjeT0iNzUiIHI9IjcwIiBmaWxsPSIjZjNmNGY2IiBzdHJva2U9IiM0Zjg0ZjciIHN0cm9rZS13aWR0aD0iMiIvPgo8cGF0aCBkPSJNNDAgNzVDNDAgNTUgNTUgNDAgNzUgNDBDOTUgNDAgMTEwIDU1IDExMCA3NSIgc3Ryb2tlPSIjMzc0MTUxIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz4KPC9zdmc+';
           dispatch({ type: 'SET_FINGERPRINT', fingerprint: simulatedFingerprint });
           return 100;
         }
@@ -32,19 +32,21 @@ export function Fingerprint() {
     }, 50);
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const handleClearFingerprint = () => {
+    dispatch({ type: 'SET_FINGERPRINT', fingerprint: null });
+  };
 
   const handleSubmit = async () => {
     if (!state.data.fingerprint) return;
-    
+
     setIsSubmitting(true);
-    
+
     // Simulate API submission
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     dispatch({ type: 'SUBMIT_FINGERPRINT' });
     setIsSubmitting(false);
-    
+
     // Move to next step
     dispatch({ type: 'SET_STEP', step: 4 });
   };
@@ -101,13 +103,13 @@ export function Fingerprint() {
                     <p className="font-semibold">Place finger here</p>
                   </div>
                 )}
-                
+
                 {/* Scanning animation overlay */}
                 {isScanning && (
                   <motion.div
                     className="absolute inset-0 bg-primary/10"
                     initial={{ clipPath: 'circle(0% at 50% 50%)' }}
-                    animate={{ clipPath: `circle(${scanProgress/2}% at 50% 50%)` }}
+                    animate={{ clipPath: `circle(${scanProgress / 2}% at 50% 50%)` }}
                     transition={{ duration: 0.1 }}
                   />
                 )}
@@ -131,16 +133,16 @@ export function Fingerprint() {
             </motion.div>
 
             {!state.data.fingerprint && (
-              <div className="text-center space-y-2">
-                <p className="text-muted-foreground max-w-md">
-                  {isScanning 
+              <div className="text-center space-y-4 w-full max-w-md">
+                <p className="text-muted-foreground">
+                  {isScanning
                     ? "Keep your finger steady on the scanner until the process is complete."
                     : "Click the button below to start the fingerprint scanning process."
                   }
                 </p>
-                
+
                 {!isScanning && (
-                  <Button 
+                  <Button
                     onClick={handleStartScan}
                     className="rounded-full px-8 py-3 gradient-primary shadow-button"
                   >
@@ -150,7 +152,7 @@ export function Fingerprint() {
                 )}
 
                 {isScanning && (
-                  <div className="bg-muted/50 rounded-xl p-4 max-w-md">
+                  <div className="bg-muted/50 rounded-xl p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                       <p className="text-sm">
@@ -158,7 +160,7 @@ export function Fingerprint() {
                       </p>
                     </div>
                     <div className="w-full bg-border rounded-full h-2 mt-2">
-                      <motion.div 
+                      <motion.div
                         className="bg-primary h-2 rounded-full"
                         initial={{ width: '0%' }}
                         animate={{ width: `${scanProgress}%` }}
@@ -167,6 +169,29 @@ export function Fingerprint() {
                     </div>
                   </div>
                 )}
+
+                {/* Biometric Security Link (before scanning) */}
+                <div className="bg-muted/50 rounded-xl p-4 w-full">
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setShowBiometricModal(true)}
+                      className="flex items-center gap-2 text-primary hover:underline cursor-pointer"
+                    >
+                      {/* Icon Circle */}
+                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-primary"></div>
+                      </div>
+                      {/* Text */}
+                      <span className="font-medium">Biometric Security</span>
+                    </button>
+                  </div>
+
+                  {/* <p className="text-muted-foreground text-center mt-2">
+    Your fingerprint is converted to an encrypted template and cannot be reverse-engineered. 
+    Only the mathematical pattern is stored, not the actual image.
+  </p> */}
+                </div>
+
               </div>
             )}
 
@@ -174,69 +199,85 @@ export function Fingerprint() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-center space-y-2"
+                className="text-center space-y-4 w-full max-w-md"
               >
-                 <div className="space-y-4">
-                   <div className="bg-green-50 border border-green-200 rounded-xl p-4 max-w-md">
-                     <h3 className="font-semibold text-green-800 mb-1">Fingerprint Captured</h3>
-                     <p className="text-xs text-green-600">
-                       Securely recorded and encrypted.
-                     </p>
-                   </div>
-                   
-                   <Button
-                     onClick={handleSubmit}
-                     disabled={isSubmitting}
-                     className="rounded-full px-8 py-3 gradient-primary shadow-button"
-                   >
-                     {isSubmitting ? (
-                       <>
-                         <motion.div
-                           animate={{ rotate: 360 }}
-                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                           className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                         />
-                         Submitting...
-                       </>
-                     ) : (
-                       'Submit Fingerprint'
-                     )}
-                   </Button>
-                 </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 relative">
+                  <button
+                    onClick={handleClearFingerprint}
+                    className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <h3 className="font-semibold text-green-800 mb-1">Fingerprint Captured</h3>
+                  <p className="text-xs text-green-600">
+                    Securely recorded and encrypted.
+                  </p>
+                </div>
+
+                {/* Biometric Security Link (after scanning) */}
+                <div className="bg-muted/50 rounded-xl p-4 w-full">
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setShowBiometricModal(true)}
+                      className="flex items-center gap-2 text-primary hover:underline cursor-pointer"
+                    >
+                      {/* Icon Circle */}
+                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-primary"></div>
+                      </div>
+                      {/* Text */}
+                      <span className="font-medium">Biometric Security</span>
+                    </button>
+                  </div>
+
+                  {/* <p className="text-muted-foreground text-center mt-2">
+    Your fingerprint is converted to an encrypted template and cannot be reverse-engineered. 
+    Only the mathematical pattern is stored, not the actual image.
+  </p> */}
+                </div>
+
               </motion.div>
             )}
-
-            <div className="bg-muted/50 rounded-xl p-1 max-w-md">
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0">
-                  <div className="w-2 h-2 rounded-full bg-primary"></div>
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium mb-1">
-                    <button 
-                      onClick={() => setShowBiometricModal(true)}
-                      className="text-primary hover:underline cursor-pointer"
-                    >
-                      Biometric Security
-                    </button>
-                  </p>
-                  {/* <p className="text-muted-foreground">
-                    Your fingerprint is converted to an encrypted template and cannot be reverse-engineered. 
-                    Only the mathematical pattern is stored, not the actual image.
-                  </p> */}
-                </div>
-              </div>
-            </div>
           </div>
 
-          <NavigationButtons
-            currentStep={3}
-            totalSteps={4}
-            onBack={handleBack}
-            onNext={() => {}}
-            isNextDisabled={true}
-            hideNext={true}
-          />
+          {/* Navigation and Submit Button */}
+          <div className="flex items-center justify-between mt-8">
+            {/* Back Button */}
+            <Button
+              onClick={handleBack}
+              variant="outline"
+              className="rounded-full px-6 py-2"
+            >
+              Back
+            </Button>
+
+            {/* Submit Button (Centered) */}
+            {state.data.fingerprint && (
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="rounded-full px-8 py-3 gradient-primary shadow-button"
+              >
+                {isSubmitting ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                    />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Fingerprint'
+                )}
+              </Button>
+            )}
+
+            {/* Step Indicator */}
+            <div className="text-sm text-muted-foreground">
+              Step 3 of 4
+            </div>
+          </div>
         </motion.div>
       </StepCard>
 
@@ -250,7 +291,7 @@ export function Fingerprint() {
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">Biometric Security</h3>
-              <button 
+              <button
                 onClick={() => setShowBiometricModal(false)}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -259,24 +300,24 @@ export function Fingerprint() {
             </div>
             <div className="space-y-4">
               <p>
-                Your fingerprint data is converted into a secure mathematical template using 
+                Your fingerprint data is converted into a secure mathematical template using
                 industry-standard encryption algorithms. The original fingerprint image is never stored.
               </p>
               <p>
-                Our biometric system uses advanced pattern recognition that cannot be reverse-engineered 
+                Our biometric system uses advanced pattern recognition that cannot be reverse-engineered
                 to recreate your actual fingerprint.
               </p>
               <p>
-                All biometric templates are encrypted both at rest and in transit, and we comply with 
+                All biometric templates are encrypted both at rest and in transit, and we comply with
                 international biometric data protection standards including ISO/IEC 19794-2.
               </p>
               <p>
-                Your biometric data is only used for verification purposes and is never shared with 
+                Your biometric data is only used for verification purposes and is never shared with
                 third parties without your explicit consent.
               </p>
             </div>
             <div className="mt-6 flex justify-end">
-              <Button 
+              <Button
                 onClick={() => setShowBiometricModal(false)}
                 className="rounded-full"
               >
