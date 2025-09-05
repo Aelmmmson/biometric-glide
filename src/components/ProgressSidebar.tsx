@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Check, Camera, FileText, Fingerprint, CheckCircle } from 'lucide-react';
+import { useBiometric } from '@/contexts/BiometricContext';
 
 const steps = [
   {
@@ -30,6 +31,34 @@ const steps = [
 
 
 export function ProgressSidebar() {
+  const { state } = useBiometric();
+  
+  // Determine completed steps based on submitted data
+  const getCompletedSteps = () => {
+    const completed = [];
+    
+    // Step 1 is completed if both photo and signature are captured
+    if (state.data.photo && state.data.signature) {
+      completed.push(1);
+    }
+    
+    // Step 2 is completed if identification is captured based on type
+    const id = state.data.identification;
+    if (id.type && id.front && (id.type === 'passport' || id.type === 'voter_id' || id.back)) {
+      completed.push(2);
+    }
+    
+    // Step 3 is completed if fingerprint is captured
+    if (state.data.fingerprint) {
+      completed.push(3);
+    }
+    
+    return completed;
+  };
+
+  const completedSteps = getCompletedSteps();
+  const currentStep = state.currentStep;
+
   return (
     <div className="bg-sidebar text-sidebar-foreground p-8 rounded-2xl shadow-card h-fit sticky top-8">
       <div className="mb-8">
