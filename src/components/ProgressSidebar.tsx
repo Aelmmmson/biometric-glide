@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { Check, Camera, FileText, Fingerprint, CheckCircle } from 'lucide-react';
-import { useBiometric } from '@/contexts/BiometricContext';
 
 const steps = [
   {
@@ -29,36 +28,12 @@ const steps = [
   },
 ];
 
+interface ProgressSidebarProps {
+  currentStep: number;
+  completedSteps: number[];
+}
 
-export function ProgressSidebar() {
-  const { state } = useBiometric();
-  
-  // Determine completed steps based on submitted data
-  const getCompletedSteps = () => {
-    const completed = [];
-    
-    // Step 1 is completed if both photo and signature are captured
-    if (state.data.photo && state.data.signature) {
-      completed.push(1);
-    }
-    
-    // Step 2 is completed if identification is captured based on type
-    const id = state.data.identification;
-    if (id.type && id.front && (id.type === 'passport' || id.type === 'voter_id' || id.back)) {
-      completed.push(2);
-    }
-    
-    // Step 3 is completed if fingerprint is captured
-    if (state.data.fingerprint) {
-      completed.push(3);
-    }
-    
-    return completed;
-  };
-
-  const completedSteps = getCompletedSteps();
-  const currentStep = state.currentStep;
-
+export function ProgressSidebar({ currentStep, completedSteps }: ProgressSidebarProps) {
   return (
     <div className="bg-sidebar text-sidebar-foreground p-8 rounded-2xl shadow-card h-fit sticky top-8">
       <div className="mb-8">
@@ -128,39 +103,6 @@ export function ProgressSidebar() {
           Your data is encrypted and secure.
         </p>
       </div>
-    </div>
-  );
-}
-
-interface MobileStepIndicatorProps {
-  step: number;
-  title: string;
-  isActive: boolean;
-  isCompleted: boolean;
-  hasData?: boolean;
-}
-
-function MobileStepIndicator({ step, title, isActive, isCompleted, hasData }: MobileStepIndicatorProps) {
-  return (
-    <div className="flex flex-col items-center space-y-1 flex-1">
-      <div className={`
-        w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300
-        ${isCompleted 
-          ? 'bg-green-500 text-white' 
-          : isActive 
-            ? 'bg-primary text-white animate-pulse' 
-            : hasData 
-              ? 'bg-primary/20 text-primary' 
-              : 'bg-muted text-muted-foreground'
-        }
-      `}>
-        {isCompleted ? '✓' : step}
-      </div>
-      <span className={`text-xs font-medium text-center ${
-        isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-muted-foreground'
-      }`}>
-        {title}
-      </span>
     </div>
   );
 }

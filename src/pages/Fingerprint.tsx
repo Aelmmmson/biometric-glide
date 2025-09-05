@@ -32,14 +32,8 @@ export function Fingerprint() {
     }, 50);
   };
 
-  const handleSubmit = () => {
-    // TODO: Add API call here
-    console.log('Submitting fingerprint data:', state.data.fingerprint);
-    dispatch({ type: 'SET_STEP', step: 4 });
-  };
-
   const handleNext = () => {
-    handleSubmit();
+    dispatch({ type: 'SET_STEP', step: 4 });
   };
 
   const handleBack = () => {
@@ -47,11 +41,6 @@ export function Fingerprint() {
   };
 
   const isNextDisabled = !state.data.fingerprint;
-  
-  const clearFingerprint = () => {
-    dispatch({ type: 'SET_FINGERPRINT', fingerprint: null });
-    setScanProgress(0);
-  };
 
   return (
     <>
@@ -81,12 +70,6 @@ export function Fingerprint() {
                     transition={{ duration: 0.5 }}
                     className="text-center"
                   >
-                    <button
-                      onClick={clearFingerprint}
-                      className="absolute top-4 right-4 w-8 h-8 bg-destructive text-white rounded-full flex items-center justify-center hover:bg-destructive/80 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
                     <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
                     <p className="font-semibold text-green-600">Fingerprint Captured</p>
                   </motion.div>
