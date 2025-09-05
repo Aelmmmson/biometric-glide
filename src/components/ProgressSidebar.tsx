@@ -10,8 +10,8 @@ const steps = [
   },
   {
     id: 2,
-    title: 'Passport Upload',
-    description: 'Upload or scan your passport',
+    title: 'Identification',
+    description: 'Verify your ID document',
     icon: FileText,
   },
   {
@@ -23,7 +23,7 @@ const steps = [
   {
     id: 4,
     title: 'Confirmation',
-    description: 'Review and submit your data',
+    description: 'Review submitted data',
     icon: CheckCircle,
   },
 ];

@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProgressSidebar } from '@/components/ProgressSidebar';
 import { PhotoSignature } from './PhotoSignature';
-import { Passport } from './Passport';
+import { Identification } from './Identification';
 import { Fingerprint } from './Fingerprint';
 import { Review } from './Review';
 import { useBiometric } from '@/contexts/BiometricContext';
@@ -11,10 +11,10 @@ const Index = () => {
   
   const getCompletedSteps = () => {
     const completed = [];
-    if (state.data.photo && state.data.signature) completed.push(1);
-    if (state.data.passport) completed.push(2);
-    if (state.data.fingerprint) completed.push(3);
-    if (state.isSubmitted) completed.push(4);
+    if (state.submissions.photoSignature) completed.push(1);
+    if (state.submissions.identification) completed.push(2);
+    if (state.submissions.fingerprint) completed.push(3);
+    if (state.isCompleted) completed.push(4);
     return completed;
   };
 
@@ -23,7 +23,7 @@ const Index = () => {
       case 1:
         return <PhotoSignature key="step-1" />;
       case 2:
-        return <Passport key="step-2" />;
+        return <Identification key="step-2" />;
       case 3:
         return <Fingerprint key="step-3" />;
       case 4:

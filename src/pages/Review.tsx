@@ -17,7 +17,7 @@ export function Review() {
     // Simulate API submission
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    dispatch({ type: 'SUBMIT_SUCCESS' });
+    dispatch({ type: 'COMPLETE_PROCESS' });
     setIsSubmitting(false);
   };
 
@@ -25,7 +25,7 @@ export function Review() {
     dispatch({ type: 'SET_STEP', step: 3 });
   };
 
-  if (state.isSubmitted) {
+  if (state.isCompleted) {
     return (
       <StepCard>
         <motion.div
@@ -74,33 +74,33 @@ export function Review() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        <h2 className="text-3xl font-bold mb-2">Review & Submit</h2>
-        <p className="text-muted-foreground mb-8">
-          Review your information before submitting.
+        <h2 className="text-2xl font-bold mb-1">Confirmation</h2>
+        <p className="text-muted-foreground mb-6">
+          Review your submitted information.
         </p>
 
-        <div className="space-y-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {/* Photo Review */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-accent/30 rounded-xl p-6 border border-border/50"
+            className="bg-accent/30 rounded-xl p-4 border border-border/50"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <Camera className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <Camera className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold mb-1">Photo</h3>
-                <p className="text-sm text-muted-foreground">Captured</p>
+                <h3 className="font-semibold">Photo</h3>
+                <p className="text-sm text-green-600">✓ Submitted</p>
               </div>
               <div className="flex-shrink-0">
                 {state.data.photo && (
                   <img 
                     src={state.data.photo} 
                     alt="Profile" 
-                    className="w-16 h-16 object-cover rounded-xl border-2 border-primary/20"
+                    className="w-12 h-12 object-cover rounded-lg border-2 border-primary/20"
                   />
                 )}
               </div>
@@ -112,19 +112,19 @@ export function Review() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-accent/30 rounded-xl p-6 border border-border/50"
+            className="bg-accent/30 rounded-xl p-4 border border-border/50"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <FileText className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <FileText className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold mb-1">Signature</h3>
-                <p className="text-sm text-muted-foreground">Captured</p>
+                <h3 className="font-semibold">Signature</h3>
+                <p className="text-sm text-green-600">✓ Submitted</p>
               </div>
               <div className="flex-shrink-0">
                 {state.data.signature && (
-                  <div className="w-16 h-12 bg-white rounded-lg border-2 border-primary/20 flex items-center justify-center">
+                  <div className="w-12 h-8 bg-white rounded border-2 border-primary/20 flex items-center justify-center">
                     <img 
                       src={state.data.signature} 
                       alt="Signature" 
@@ -136,27 +136,27 @@ export function Review() {
             </div>
           </motion.div>
 
-          {/* Passport Review */}
+          {/* ID Review */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-accent/30 rounded-xl p-6 border border-border/50"
+            className="bg-accent/30 rounded-xl p-4 border border-border/50"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <FileText className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <FileText className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold mb-1">Passport</h3>
-                <p className="text-sm text-muted-foreground">Verified</p>
+                <h3 className="font-semibold">Identification</h3>
+                <p className="text-sm text-green-600">✓ Submitted</p>
               </div>
               <div className="flex-shrink-0">
-                {state.data.passport && (
-                  <div className="w-16 h-12 bg-white rounded-lg border-2 border-primary/20 overflow-hidden">
+                {state.data.idFront && (
+                  <div className="w-12 h-8 bg-white rounded border-2 border-primary/20 overflow-hidden">
                     <img 
-                      src={state.data.passport} 
-                      alt="Passport" 
+                      src={state.data.idFront} 
+                      alt="ID" 
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -170,19 +170,19 @@ export function Review() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-accent/30 rounded-xl p-6 border border-border/50"
+            className="bg-accent/30 rounded-xl p-4 border border-border/50"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <FingerprintIcon className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <FingerprintIcon className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold mb-1">Fingerprint</h3>
-                <p className="text-sm text-muted-foreground">Captured</p>
+                <h3 className="font-semibold">Fingerprint</h3>
+                <p className="text-sm text-green-600">✓ Submitted</p>
               </div>
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
                 </div>
               </div>
             </div>
@@ -196,38 +196,23 @@ export function Review() {
           transition={{ delay: 0.5 }}
           className="space-y-6"
         >
-          <div className="bg-muted/50 rounded-xl p-1 text-center">
-            <h3 className="font-semibold mb-0">Privacy & Consent</h3>
-            <p className="text-sm text-muted-foreground mb-1">
-              By submitting, you agree to our data collection and processing practices.
-            </p>
-            <PrivacyModal>
-              <Button variant="link" className="text-primary hover:underline p-0">
-                View Privacy Policy
-              </Button>
-            </PrivacyModal>
-          </div>
-
           <div className="flex justify-center">
             <Button 
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="rounded-full px-12 py-4 text-lg gradient-primary shadow-button disabled:opacity-50"
+              className="rounded-full px-8 py-3 gradient-primary shadow-button disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-3"
+                    className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
                   />
-                  Submitting...
+                  Processing...
                 </>
               ) : (
-                <>
-                  <Send className="w-5 h-5 mr-3" />
-                  Submit
-                </>
+                'Complete Process'
               )}
             </Button>
           </div>
@@ -239,7 +224,7 @@ export function Review() {
           onBack={handleBack}
           onNext={() => {}}
           isNextDisabled={true}
-          nextLabel="Complete"
+          hideNext={true}
         />
       </motion.div>
     </StepCard>

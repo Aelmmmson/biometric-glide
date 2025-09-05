@@ -9,6 +9,7 @@ interface NavigationButtonsProps {
   onNext: () => void;
   isNextDisabled?: boolean;
   nextLabel?: string;
+  hideNext?: boolean;
 }
 
 export function NavigationButtons({
@@ -17,7 +18,8 @@ export function NavigationButtons({
   onBack,
   onNext,
   isNextDisabled = false,
-  nextLabel = 'Next'
+  nextLabel = 'Next',
+  hideNext = false
 }: NavigationButtonsProps) {
   return (
     <motion.div
@@ -40,14 +42,16 @@ export function NavigationButtons({
         Step {currentStep} of {totalSteps}
       </div>
 
-      <Button
-        onClick={onNext}
-        disabled={isNextDisabled}
-        className="rounded-full px-6 py-3 font-medium gradient-primary hover:shadow-button transition-all duration-300 disabled:opacity-50"
-      >
-        {nextLabel}
-        <ArrowRight className="w-4 h-4 ml-2" />
-      </Button>
+      {!hideNext && (
+        <Button
+          onClick={onNext}
+          disabled={isNextDisabled}
+          className="rounded-full px-6 py-3 font-medium gradient-primary hover:shadow-button transition-all duration-300 disabled:opacity-50"
+        >
+          {nextLabel}
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+      )}
     </motion.div>
   );
 }

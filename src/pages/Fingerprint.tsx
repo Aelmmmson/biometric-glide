@@ -32,15 +32,26 @@ export function Fingerprint() {
     }, 50);
   };
 
-  const handleNext = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!state.data.fingerprint) return;
+    
+    setIsSubmitting(true);
+    
+    // Simulate API submission
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    dispatch({ type: 'SUBMIT_FINGERPRINT' });
+    setIsSubmitting(false);
+    
+    // Move to next step
     dispatch({ type: 'SET_STEP', step: 4 });
   };
 
   const handleBack = () => {
     dispatch({ type: 'SET_STEP', step: 2 });
   };
-
-  const isNextDisabled = !state.data.fingerprint;
 
   return (
     <>
@@ -50,9 +61,9 @@ export function Fingerprint() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
         >
-          <h2 className="text-3xl font-bold mb-2">Fingerprint Capture</h2>
-          <p className="text-muted-foreground mb-8">
-            Place your finger on the scanner to capture your unique fingerprint pattern.
+          <h2 className="text-2xl font-bold mb-1">Fingerprint Capture</h2>
+          <p className="text-muted-foreground mb-6">
+            Place your finger on the scanner.
           </p>
 
           <div className="flex flex-col items-center space-y-8">
@@ -165,12 +176,33 @@ export function Fingerprint() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center space-y-2"
               >
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 max-w-md">
-                  <h3 className="font-semibold text-green-800 mb-1">Fingerprint Successfully Captured</h3>
-                  <p className="text-xs text-green-600">
-                    Your unique fingerprint pattern has been securely recorded and encrypted for verification.
-                  </p>
-                </div>
+                 <div className="space-y-4">
+                   <div className="bg-green-50 border border-green-200 rounded-xl p-4 max-w-md">
+                     <h3 className="font-semibold text-green-800 mb-1">Fingerprint Captured</h3>
+                     <p className="text-xs text-green-600">
+                       Securely recorded and encrypted.
+                     </p>
+                   </div>
+                   
+                   <Button
+                     onClick={handleSubmit}
+                     disabled={isSubmitting}
+                     className="rounded-full px-8 py-3 gradient-primary shadow-button"
+                   >
+                     {isSubmitting ? (
+                       <>
+                         <motion.div
+                           animate={{ rotate: 360 }}
+                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                           className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                         />
+                         Submitting...
+                       </>
+                     ) : (
+                       'Submit Fingerprint'
+                     )}
+                   </Button>
+                 </div>
               </motion.div>
             )}
 
@@ -201,8 +233,9 @@ export function Fingerprint() {
             currentStep={3}
             totalSteps={4}
             onBack={handleBack}
-            onNext={handleNext}
-            isNextDisabled={isNextDisabled}
+            onNext={() => {}}
+            isNextDisabled={true}
+            hideNext={true}
           />
         </motion.div>
       </StepCard>

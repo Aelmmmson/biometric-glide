@@ -1,16 +1,18 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Signature, Image as ImageIcon } from 'lucide-react';
+import { Camera, Upload, Signature, Image as ImageIcon, X } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { NavigationButtons } from '@/components/NavigationButtons';
 import { Button } from '@/components/ui/button';
 import { useBiometric } from '@/contexts/BiometricContext';
+import { toast } from '@/hooks/use-toast';
 
 export function PhotoSignature() {
   const { state, dispatch } = useBiometric();
   const [photoMode, setPhotoMode] = useState<'capture' | 'upload'>('capture');
   const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
@@ -93,7 +95,23 @@ export function PhotoSignature() {
     }
   };
 
-  const handleNext = () => {
+  const handleClearPhoto = () => {
+    dispatch({ type: 'SET_PHOTO', photo: null });
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    
+    setIsSubmitting(true);
+    
+    // Simulate API submission
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    dispatch({ type: 'SUBMIT_PHOTO_SIGNATURE' });
+    toast({ title: "Photo & Signature submitted successfully!" });
+    setIsSubmitting(false);
+    
+    // Move to next step
     dispatch({ type: 'SET_STEP', step: 2 });
   };
 
@@ -101,7 +119,7 @@ export function PhotoSignature() {
     // Disabled for step 1
   };
 
-  const isNextDisabled = !state.data.photo || !state.data.signature;
+  const canSubmit = state.data.photo && state.data.signature;
 
   return (
     <StepCard>
@@ -110,9 +128,9 @@ export function PhotoSignature() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        <h2 className="text-2xl font-bold mb-1">Photo & Signature Capture</h2>
-        <p className="text-muted-foreground mb-8">
-          Capture or upload your photo and signature to begin the verification process.
+        <h2 className="text-2xl font-bold mb-1">Photo & Signature</h2>
+        <p className="text-muted-foreground mb-6">
+          Capture or upload your photo and signature.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -123,23 +141,34 @@ export function PhotoSignature() {
               Photo
             </h3>
             
-            <div className="flex gap-2 mb-2">
-              <Button
-                variant={photoMode === 'capture' ? 'default' : 'outline'}
-                onClick={() => setPhotoMode('capture')}
-                className="rounded-full"
-              >
-                <Camera className="w-4 h-4 mr-2" />
-                Capture
-              </Button>
-              <Button
-                variant={photoMode === 'upload' ? 'default' : 'outline'}
-                onClick={() => setPhotoMode('upload')}
-                className="rounded-full"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload
-              </Button>
+            <div className="flex items-center gap-4 mb-4">
+              <span className="text-sm font-medium">Method:</span>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="photoMode"
+                    value="capture"
+                    checked={photoMode === 'capture'}
+                    onChange={() => setPhotoMode('capture')}
+                    className="radio"
+                  />
+                  <Camera className="w-4 h-4" />
+                  <span className="text-sm">Capture</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="photoMode"
+                    value="upload"
+                    checked={photoMode === 'upload'}
+                    onChange={() => setPhotoMode('upload')}
+                    className="radio"
+                  />
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm">Upload</span>
+                </label>
+              </div>
             </div>
 
             <motion.div
@@ -147,16 +176,22 @@ export function PhotoSignature() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
-              className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-accent/50"
+              className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-accent/50 relative"
             >
               {state.data.photo ? (
                 <div className="space-y-4">
+                  <button
+                    onClick={handleClearPhoto}
+                    className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                   <img 
                     src={state.data.photo} 
                     alt="Captured photo" 
                     className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-primary"
                   />
-                  <p className="text-sm text-muted-foreground">Photo captured successfully</p>
+                  <p className="text-sm text-green-600 font-semibold">✓ Photo captured successfully</p>
                 </div>
               ) : photoMode === 'capture' ? (
                 <div className="space-y-4">
@@ -204,23 +239,34 @@ export function PhotoSignature() {
               Signature
             </h3>
             
-            <div className="flex gap-2 mb-2">
-              <Button
-                variant={signatureMode === 'draw' ? 'default' : 'outline'}
-                onClick={() => setSignatureMode('draw')}
-                className="rounded-full"
-              >
-                <Signature className="w-4 h-4 mr-2" />
-                Draw
-              </Button>
-              <Button
-                variant={signatureMode === 'upload' ? 'default' : 'outline'}
-                onClick={() => setSignatureMode('upload')}
-                className="rounded-full"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload
-              </Button>
+            <div className="flex items-center gap-4 mb-4">
+              <span className="text-sm font-medium">Method:</span>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="signatureMode"
+                    value="draw"
+                    checked={signatureMode === 'draw'}
+                    onChange={() => setSignatureMode('draw')}
+                    className="radio"
+                  />
+                  <Signature className="w-4 h-4" />
+                  <span className="text-sm">Draw</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="signatureMode"
+                    value="upload"
+                    checked={signatureMode === 'upload'}
+                    onChange={() => setSignatureMode('upload')}
+                    className="radio"
+                  />
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm">Upload</span>
+                </label>
+              </div>
             </div>
 
             <motion.div
@@ -252,8 +298,8 @@ export function PhotoSignature() {
                     </Button>
                   </div>
                   {state.data.signature && (
-                    <p className="text-sm text-muted-foreground text-center">
-                      Signature captured successfully
+                    <p className="text-sm text-green-600 font-semibold text-center">
+                      ✓ Signature captured successfully
                     </p>
                   )}
                 </div>
@@ -278,14 +324,20 @@ export function PhotoSignature() {
                     />
                   </div>
                   {state.data.signature && (
-                    <div className="mt-4">
+                    <div className="mt-4 relative">
+                      <button
+                        onClick={() => dispatch({ type: 'SET_SIGNATURE', signature: null })}
+                        className="absolute top-0 right-0 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                       <img 
                         src={state.data.signature} 
                         alt="Uploaded signature" 
                         className="max-h-20 mx-auto border border-border rounded"
                       />
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Signature uploaded successfully
+                      <p className="text-sm text-green-600 font-semibold mt-2">
+                        ✓ Signature uploaded successfully
                       </p>
                     </div>
                   )}
@@ -295,12 +347,35 @@ export function PhotoSignature() {
           </div>
         </div>
 
+        {/* Submit Button */}
+        <div className="flex justify-center mt-8">
+          <Button
+            onClick={handleSubmit}
+            disabled={!canSubmit || isSubmitting}
+            className="rounded-full px-8 py-3 gradient-primary shadow-button"
+          >
+            {isSubmitting ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                />
+                Submitting...
+              </>
+            ) : (
+              'Submit Photo & Signature'
+            )}
+          </Button>
+        </div>
+
         <NavigationButtons
           currentStep={1}
           totalSteps={4}
           onBack={handleBack}
-          onNext={handleNext}
-          isNextDisabled={isNextDisabled}
+          onNext={() => {}}
+          isNextDisabled={true}
+          hideNext={true}
         />
       </motion.div>
     </StepCard>
