@@ -73,9 +73,9 @@ export function Review() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        <h2 className="text-2xl font-bold mb-1">Confirmation</h2>
+        <h2 className="text-2xl font-bold mb-1">Submitted Documents</h2>
         <p className="text-muted-foreground mb-6">
-          Review your submitted information.
+          Find your submitted information below.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">

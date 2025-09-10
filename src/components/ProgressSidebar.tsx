@@ -20,12 +20,12 @@ const steps = [
     description: 'Capture your fingerprint',
     icon: Fingerprint,
   },
-  {
-    id: 4,
-    title: 'Confirmation',
-    description: 'Review submitted data',
-    icon: CheckCircle,
-  },
+  // {
+  //   id: 4,
+  //   title: 'Confirmation',
+  //   description: 'Review submitted data',
+  //   icon: CheckCircle,
+  // },
 ];
 
 interface ProgressSidebarProps {
