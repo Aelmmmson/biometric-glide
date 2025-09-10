@@ -98,7 +98,7 @@ export function ProgressSidebar({ currentStep, completedSteps }: ProgressSidebar
         })}
       </div>
 
-      <div className="mt-16 pt-6 border-t border-sidebar-border">
+      <div className="mt-20 pt-10 border-t border-sidebar-border">
         <p className="text-sm text-sidebar-foreground/60">
           Your data is encrypted and secure.
         </p>
