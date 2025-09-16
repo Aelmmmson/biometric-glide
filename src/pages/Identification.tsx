@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Upload, Scan, X, CreditCard, Fingerprint as FingerprintIcon, Vote } from 'lucide-react';
+import { FileText, Upload, Scan, X, CreditCard, Fingerprint as FingerprintIcon, Vote, Edit } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useBiometric } from '@/contexts/BiometricContext';
 import { toast } from '@/hooks/use-toast';
+import { ImageEditor } from '@/components/ImageEditor';
 
 const idTypes = [
   { 
@@ -42,6 +43,8 @@ export function Identification() {
   const { state, dispatch } = useBiometric();
   const [captureMode, setCaptureMode] = useState<'scan' | 'upload'>('scan');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingFront, setEditingFront] = useState(false);
+  const [editingBack, setEditingBack] = useState(false);
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
 
@@ -224,12 +227,22 @@ export function Identification() {
                 >
                   {state.data.idFront ? (
                     <div className="space-y-3">
-                      <button
-                        onClick={handleClearFront}
-                        className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <button
+                          onClick={() => setEditingFront(true)}
+                          className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs hover:bg-primary/80 transition-colors"
+                          title="Edit document"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={handleClearFront}
+                          className="w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                          title="Clear document"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                       <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
                         <img 
                           src={state.data.idFront} 
@@ -293,12 +306,22 @@ export function Identification() {
                   >
                     {state.data.idBack ? (
                       <div className="space-y-3">
-                        <button
-                          onClick={handleClearBack}
-                          className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          <button
+                            onClick={() => setEditingBack(true)}
+                            className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs hover:bg-primary/80 transition-colors"
+                            title="Edit document"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={handleClearBack}
+                            className="w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                            title="Clear document"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
                         <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
                           <img 
                             src={state.data.idBack} 
@@ -351,6 +374,33 @@ export function Identification() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Image Editors */}
+        {editingFront && state.data.idFront && (
+          <ImageEditor
+            imageUrl={state.data.idFront}
+            title="Edit ID Document (Front)"
+            onSave={(editedImageUrl) => {
+              dispatch({ type: 'SET_ID_FRONT', idFront: editedImageUrl });
+              toast({ title: "Document edited successfully!" });
+              setEditingFront(false);
+            }}
+            onCancel={() => setEditingFront(false)}
+          />
+        )}
+
+        {editingBack && state.data.idBack && (
+          <ImageEditor
+            imageUrl={state.data.idBack}
+            title="Edit ID Document (Back)"
+            onSave={(editedImageUrl) => {
+              dispatch({ type: 'SET_ID_BACK', idBack: editedImageUrl });
+              toast({ title: "Document edited successfully!" });
+              setEditingBack(false);
+            }}
+            onCancel={() => setEditingBack(false)}
+          />
         )}
 
         {/* Navigation and Submit Button */}

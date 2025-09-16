@@ -4,6 +4,8 @@ import { Fingerprint as FingerprintIcon, CheckCircle, X } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
 import { useBiometric } from '@/contexts/BiometricContext';
+import { initFingerprint, captureFingerprint } from '@/services/api';
+import { toast } from '@/hooks/use-toast';
 
 export function Fingerprint() {
   const { state, dispatch } = useBiometric();
@@ -12,24 +14,53 @@ export function Fingerprint() {
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleStartScan = () => {
+  const handleStartScan = async () => {
     setIsScanning(true);
     setScanProgress(0);
 
-    // Simulate fingerprint scanning progress
-    const interval = setInterval(() => {
-      setScanProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsScanning(false);
-          // Simulate fingerprint data
-          const simulatedFingerprint = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9Ijc1IiBjeT0iNzUiIHI9IjcwIiBmaWxsPSIjZjNmNGY2IiBzdHJva2U9IiM0Zjg0ZjciIHN0cm9rZS13aWR0aD0iMiIvPgo8cGF0aCBkPSJNNDAgNzVDNDAgNTUgNTUgNDAgNzUgNDBDOTUgNDAgMTEwIDU1IDExMCA3NSIgc3Ryb2tlPSIjMzc0MTUxIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz4KPC9zdmc+';
-          dispatch({ type: 'SET_FINGERPRINT', fingerprint: simulatedFingerprint });
-          return 100;
-        }
-        return prev + 2;
+    try {
+      // Step 1: Initialize fingerprint device
+      toast({ title: "Initializing fingerprint device..." });
+      const initResult = await initFingerprint();
+      
+      if (!initResult.success) {
+        throw new Error(initResult.message || 'Failed to initialize device');
+      }
+
+      setScanProgress(25);
+      toast({ title: "Device initialized. Please place finger on scanner." });
+
+      // Step 2: Capture fingerprint
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause for user
+      setScanProgress(50);
+      
+      const captureResult = await captureFingerprint();
+      
+      if (captureResult.response_code === 1 && captureResult.image) {
+        // Success - set progress to 100%
+        setScanProgress(100);
+        
+        // Convert base64 to data URL
+        const fingerprintData = `data:image/jpeg;base64,${captureResult.image}`;
+        dispatch({ type: 'SET_FINGERPRINT', fingerprint: fingerprintData });
+        
+        toast({ title: "Fingerprint captured successfully!" });
+        setIsScanning(false);
+      } else {
+        throw new Error(captureResult.response_msg || 'Failed to capture fingerprint');
+      }
+    } catch (error) {
+      console.error('Fingerprint capture error:', error);
+      setIsScanning(false);
+      setScanProgress(0);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast({ 
+        title: "Fingerprint capture failed", 
+        description: errorMessage,
+        variant: "destructive" 
       });
-    }, 50);
+    }
   };
 
   const handleClearFingerprint = () => {
@@ -41,14 +72,24 @@ export function Fingerprint() {
 
     setIsSubmitting(true);
 
-    // Simulate API submission
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    dispatch({ type: 'SUBMIT_FINGERPRINT' });
-    setIsSubmitting(false);
-
-    // Move to next step
-    dispatch({ type: 'SET_STEP', step: 4 });
+    try {
+      // Note: The fingerprint capture endpoint already saves to database
+      // So we just need to mark as submitted in our local state
+      dispatch({ type: 'SUBMIT_FINGERPRINT' });
+      toast({ title: "Fingerprint submitted successfully!" });
+      
+      // Move to next step
+      dispatch({ type: 'SET_STEP', step: 4 });
+    } catch (error) {
+      console.error('Error submitting fingerprint:', error);
+      toast({ 
+        title: "Submission failed", 
+        description: "An unexpected error occurred", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
