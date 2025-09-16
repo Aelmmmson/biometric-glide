@@ -1,21 +1,38 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Upload, Signature, Image as ImageIcon, X } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
 import { useBiometric } from '@/contexts/BiometricContext';
 import { toast } from '@/hooks/use-toast';
+import { listener, startTablet, ClearTablet, LcdRefresh, stopTablet } from './SigWebTablet';
+
+interface ExtendedWindow extends Window {
+  sigWebInitialized?: boolean;
+}
 
 export function PhotoSignature() {
   const { state, dispatch } = useBiometric();
   const [photoMode, setPhotoMode] = useState<'capture' | 'upload'>('capture');
   const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
-  const [isDrawing, setIsDrawing] = useState(false);
+  const [sigCaptured, setSigCaptured] = useState<{ image: HTMLImageElement; sig: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const extendedWindow = window as unknown as ExtendedWindow;
+    if (!extendedWindow.sigWebInitialized) {
+      listener();
+      extendedWindow.sigWebInitialized = true;
+    }
+
+    return () => {
+      stopTablet();
+    };
+  }, []);
 
   const handlePhotoCapture = () => {
     // Simulate photo capture - in real app, would use camera API
@@ -45,57 +62,33 @@ export function PhotoSignature() {
     }
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    setIsDrawing(true);
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.beginPath();
-      ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-    }
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-      ctx.stroke();
-    }
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const dataURL = canvas.toDataURL();
-      dispatch({ type: 'SET_SIGNATURE', signature: dataURL });
-    }
+  const handleSigCapture = (sig: string) => {
+    const image = new Image();
+    image.src = 'data:image/png;base64,' + sig;
+    setSigCaptured({ image, sig });
+    dispatch({ type: 'SET_SIGNATURE', signature: image.src });
+    stopTablet(); // Stop polling after capture to reduce load
   };
 
   const clearSignature = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        dispatch({ type: 'SET_SIGNATURE', signature: null });
-      }
-    }
+    setSigCaptured(null);
+    dispatch({ type: 'SET_SIGNATURE', signature: null });
+    ClearTablet();
+    LcdRefresh(0, 0, 0, 240, 64);
+    stopTablet(); // Ensure polling is stopped on clear
   };
 
   const handleClearPhoto = () => {
     dispatch({ type: 'SET_PHOTO', photo: null });
+  };
+
+  const handleDownload = () => {
+    if (sigCaptured) {
+      const link = document.createElement('a');
+      link.href = sigCaptured.image.src;
+      link.download = 'signature.png';
+      link.click();
+    }
   };
 
   const handleSubmit = async () => {
@@ -182,6 +175,7 @@ export function PhotoSignature() {
                   <button
                     onClick={handleClearPhoto}
                     className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                    type="button"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -201,6 +195,7 @@ export function PhotoSignature() {
                     <Button 
                       onClick={handlePhotoCapture}
                       className="mt-4 rounded-full gradient-primary"
+                      type="button"
                     >
                       Take Photo
                     </Button>
@@ -215,6 +210,7 @@ export function PhotoSignature() {
                     <Button 
                       onClick={() => photoInputRef.current?.click()}
                       className="mt-4 rounded-full gradient-primary"
+                      type="button"
                     >
                       Choose File
                     </Button>
@@ -278,8 +274,9 @@ export function PhotoSignature() {
               {state.data.signature ? (
                 <div className="space-y-4 text-center w-full">
                   <button
-                    onClick={() => dispatch({ type: 'SET_SIGNATURE', signature: null })}
+                    onClick={clearSignature}
                     className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                    type="button"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -291,27 +288,52 @@ export function PhotoSignature() {
                   <p className="text-sm text-green-600 font-semibold">
                     ✓ Signature {signatureMode === 'draw' ? 'captured' : 'uploaded'} successfully
                   </p>
+                  {signatureMode === 'draw' && (
+                    <Button
+                      onClick={handleDownload}
+                      className="rounded-full gradient-primary"
+                      type="button"
+                    >
+                      Download
+                    </Button>
+                  )}
                 </div>
               ) : signatureMode === 'draw' ? (
                 <div className="space-y-4 w-full">
-                  <canvas
-                    ref={canvasRef}
-                    width={300}
-                    height={150}
-                    className="border border-border rounded-lg bg-white cursor-crosshair w-full"
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onMouseLeave={stopDrawing}
-                  />
-                  {state.data.signature && (
-                    <button
-                      onClick={clearSignature}
-                      className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
+                  <form action="#" name="FORM1" onSubmit={(e) => e.preventDefault()}>
+                    <canvas
+                      ref={canvasRef}
+                      id="cnv"
+                      width={500}
+                      height={150}
+                      className="border border-border rounded-lg bg-white w-full"
+                    />
+                    <div className="flex gap-4 justify-center mt-2">
+                      <Button
+                        onClick={() => startTablet(handleSigCapture)}
+                        className="rounded-full gradient-primary px-8"
+                        type="button"
+                      >
+                        Sign
+                      </Button>
+                    </div>
+                    <div className="hidden">
+                      <p>SigString:</p>
+                      <textarea
+                        name="sigString"
+                        rows={4}
+                      />
+                    </div>
+                    <div className="hidden">
+                      <p>ImgData:</p>
+                      <textarea
+                        name="imgData"
+                        rows={4}
+                        value={state.data.signature || ''}
+                        onChange={() => {}}
+                      />
+                    </div>
+                  </form>
                 </div>
               ) : (
                 <div className="space-y-4 text-center w-full">
@@ -322,6 +344,7 @@ export function PhotoSignature() {
                     <Button 
                       onClick={() => signatureInputRef.current?.click()}
                       className="mt-4 rounded-full gradient-primary"
+                      type="button"
                     >
                       Choose File
                     </Button>
@@ -347,6 +370,7 @@ export function PhotoSignature() {
             variant="outline"
             className="rounded-full px-6 py-2"
             disabled={true}
+            type="button"
           >
             Back
           </Button>
@@ -356,6 +380,7 @@ export function PhotoSignature() {
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
             className="rounded-full px-8 py-3 gradient-primary shadow-button"
+            type="button"
           >
             {isSubmitting ? (
               <>
