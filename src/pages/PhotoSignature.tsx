@@ -154,6 +154,7 @@ export function PhotoSignature() {
       const result = await saveData({
         photoData: state.data.photo!,
         signatureData: state.data.signature!,
+        batchNumber: ''
       });
       
       if (result.success) {

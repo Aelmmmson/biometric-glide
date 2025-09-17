@@ -68,30 +68,44 @@ export const saveData = async (data: {
   photoData: string;
   signatureData: string;
   customerNumber?: string;
+  batchNumber: string; // Added to match NextJS api.ts
 }): Promise<CaptureResponse> => {
   try {
     const relationNumber = data.customerNumber || getRelationNumber();
     const photoBase64 = getBase64String(data.photoData);
     const signatureBase64 = getBase64String(data.signatureData);
 
+    // Create FormData
+    const formData = new FormData();
+    formData.append("accno", "");
+    formData.append("signname", "");
+    formData.append("id", "");
+    formData.append("expirydate", "");
+    formData.append("effectivedate", "");
+    formData.append("sigcat", "");
+    formData.append("comment1", "");
+    formData.append("type", "capture");
+    formData.append("limit", "");
+    formData.append("pix", photoBase64);
+    formData.append("photochange", "");
+    formData.append("sigchange", signatureBase64);
+    formData.append("relationid", relationNumber);
+    formData.append("batchno", data.batchNumber);
+    formData.append("customerno", "");
+    formData.append("action", "add");
+
+    // Make the API call with FormData
     const response = await fetch('http://10.203.14.169/imaging/savedata', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        pix: photoBase64,
-        sigchange: signatureBase64,
-        relationid: relationNumber,
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
-    return { success: true, message: result.message };
+    const result = await response.text();
+    return { success: true, message: result };
   } catch (error) {
     console.error('Error in saveData:', error);
     return { 
@@ -104,7 +118,7 @@ export const saveData = async (data: {
 // Initialize fingerprint device
 export const initFingerprint = async (): Promise<CaptureResponse> => {
   try {
-    const response = await fetch('http://localhost:8080/init', {
+    const response = await fetch('http://192.168.1.183:8080/init', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -133,7 +147,7 @@ export const captureFingerprint = async (relationNumber?: string): Promise<Finge
     const formData = new FormData();
     formData.append('relation_no', relationNo);
 
-    const response = await fetch('http://192.168.1.156:8080/capture', {
+    const response = await fetch('http://192.168.1.183:8080/capture', {
       method: 'POST',
       body: formData,
     });
