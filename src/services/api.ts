@@ -11,6 +11,31 @@ export interface FingerprintResponse {
   image?: string;
 }
 
+export interface SearchImagesResponse {
+  status: 'success' | 'error' | 'not_found';
+  message: string;
+  data?: {
+    approved?: {
+      photo?: string;
+      signature?: string;
+      id?: string;
+      fingerprint?: string;
+    };
+    unapproved?: {
+      photo?: string;
+      signature?: string;
+      id?: string;
+      fingerprint?: string;
+    };
+  };
+}
+
+export interface ApprovalResponse {
+  status: 'success' | 'error';
+  message: string;
+  code?: number;
+}
+
 // Extract relation number from URL path like /capture-111
 export const getRelationNumber = (): string => {
   const path = window.location.pathname;
@@ -165,4 +190,127 @@ export const captureFingerprint = async (relationNumber?: string): Promise<Finge
       response_msg: error instanceof Error ? error.message : 'Failed to capture fingerprint'
     };
   }
+};
+
+// Search for customer images (approval phase)
+export const searchImages = async (relationno: string): Promise<SearchImagesResponse> => {
+  try {
+    const response = await fetch(`http://10.203.14.169/imaging/get_temp_image-${relationno}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return {
+          status: 'not_found',
+          message: 'No images found for this customer'
+        };
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return {
+      status: 'success',
+      message: 'Images retrieved successfully',
+      data: result
+    };
+  } catch (error) {
+    console.error('Error searching images:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to search images'
+    };
+  }
+};
+
+// Approve customer images
+export const approveCustomerImages = async (params: {
+  relationno: string;
+  batch: string;
+  custno: string;
+  approved_by: string;
+  hostname: string;
+  terminal_ip: string;
+}): Promise<ApprovalResponse> => {
+  try {
+    const { relationno, batch, custno, approved_by, hostname, terminal_ip } = params;
+    
+    const response = await fetch(
+      `http://10.203.14.169/imaging/api/approve_image-${relationno}-${batch}-${custno}-${approved_by}-${hostname}-${terminal_ip}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    // Normalize response based on backend returning code 0 for success
+    if (result.code === 0 || result === 0) {
+      return {
+        status: 'success',
+        message: 'Image approved successfully',
+        code: 0
+      };
+    } else {
+      return {
+        status: 'error',
+        message: result.message || 'Failed to approve image'
+      };
+    }
+  } catch (error) {
+    console.error('Error approving images:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to approve images'
+    };
+  }
+};
+
+// Simulate rejection (placeholder)
+export const rejectCustomerImages = async (relationno: string, reason: string): Promise<ApprovalResponse> => {
+  try {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    return {
+      status: 'success',
+      message: 'Image rejected successfully'
+    };
+  } catch (error) {
+    return {
+      status: 'error',
+      message: 'Failed to reject image'
+    };
+  }
+};
+
+// Extract URL parameters for approval phase
+export const getApprovalParams = (): {
+  relationno?: string;
+  batch?: string;
+  custno?: string;
+  approved_by?: string;
+  hostname?: string;
+  terminal_ip?: string;
+} => {
+  const urlParams = new URLSearchParams(window.location.search);
+  return {
+    relationno: urlParams.get('relationno') || undefined,
+    batch: urlParams.get('batch') || undefined,
+    custno: urlParams.get('custno') || undefined,
+    approved_by: urlParams.get('approved_by') || undefined,
+    hostname: urlParams.get('hostname') || undefined,
+    terminal_ip: urlParams.get('terminal_ip') || undefined,
+  };
 };
