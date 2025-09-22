@@ -5,9 +5,14 @@ import { Identification } from './Identification';
 import { Fingerprint } from './Fingerprint';
 import { Review } from './Review';
 import { useBiometric } from '@/contexts/BiometricContext';
+import { useParams } from 'react-router-dom';
+import { useEffect } from 'react';
 
 const Index = () => {
   const { state } = useBiometric();
+  const params = useParams();
+
+  const relationId = params?.dataUrl ? params.dataUrl.split("-").at(1): undefined;
   
   const getCompletedSteps = () => {
     const completed = [];
@@ -32,6 +37,10 @@ const Index = () => {
         return <PhotoSignature key="step-1" />;
     }
   };
+
+  useEffect(()=> {
+    console.log(relationId)
+  }, [relationId])
 
   return (
     <div className="min-h-screen bg-gradient-soft">
