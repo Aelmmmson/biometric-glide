@@ -44,7 +44,7 @@ export function Fingerprint() {
         const fingerprintData = `data:image/jpeg;base64,${captureResult.image}`;
         dispatch({ type: 'SET_FINGERPRINT', fingerprint: fingerprintData });
         
-        toast({ title: "Fingerprint captured successfully!" });
+        toast({ title: "Fingerprint captured and saved to database successfully!" });
         setIsScanning(false);
       } else {
         throw new Error(captureResult.response_msg || 'Failed to capture fingerprint');
@@ -67,29 +67,9 @@ export function Fingerprint() {
     dispatch({ type: 'SET_FINGERPRINT', fingerprint: null });
   };
 
-  const handleSubmit = async () => {
-    if (!state.data.fingerprint) return;
-
-    setIsSubmitting(true);
-
-    try {
-      // Note: The fingerprint capture endpoint already saves to database
-      // So we just need to mark as submitted in our local state
-      dispatch({ type: 'SUBMIT_FINGERPRINT' });
-      toast({ title: "Fingerprint submitted successfully!" });
-      
-      // Move to next step
-      dispatch({ type: 'SET_STEP', step: 4 });
-    } catch (error) {
-      console.error('Error submitting fingerprint:', error);
-      toast({ 
-        title: "Submission failed", 
-        description: "An unexpected error occurred", 
-        variant: "destructive" 
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleNext = () => {
+    dispatch({ type: 'SUBMIT_FINGERPRINT' });
+    dispatch({ type: 'SET_STEP', step: 4 });
   };
 
   const handleBack = () => {
@@ -292,25 +272,13 @@ export function Fingerprint() {
               Back
             </Button>
 
-            {/* Submit Button (Centered) */}
+            {/* Continue Button (Centered) */}
             {state.data.fingerprint && (
               <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
+                onClick={handleNext}
                 className="rounded-full px-8 py-3 gradient-primary shadow-button"
               >
-                {isSubmitting ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                    />
-                    Submitting...
-                  </>
-                ) : (
-                  'Submit Fingerprint'
-                )}
+                Continue to Review
               </Button>
             )}
 
