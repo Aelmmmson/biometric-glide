@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Upload, Scan, X, CreditCard, Fingerprint as FingerprintIcon, Vote, Edit } from 'lucide-react';
+import { FileText, Upload, Scan, X, CreditCard, Vote, Edit } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useBiometric } from '@/contexts/BiometricContext';
 import { toast } from '@/hooks/use-toast';
 import { ImageEditor } from '@/components/ImageEditor';
+import { captureIdentification } from '@/services/api'; // Adjust the import path to match your project structure
 
 const idTypes = [
   { 
@@ -56,7 +57,7 @@ export function Identification() {
 
   const handleScanFront = () => {
     setTimeout(() => {
-      const simulatedId = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMzMzNzNjIiByeD0iOCIvPgo8cGF0aCBkPSJNMTUgMzBIOTBWNjBIMTV6IiBmaWxsPSIjNGY4YWY3Ii8+CjxwYXRoIGQ9Ik0xNSA4MEgyNDBWMTAwSDE1eiIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTUgMTEwSDIwMFYxMzBIMTV6IiBmaWxsPSIjOTRhM2I4Ii8+CjxwYXRoIGQ9Ik0xNSAxNDBIMTgwVjE2MEgxNXoiIGZpbGw9IiM5NGEzYjgiLz4KPC9zdmc+';
+      const simulatedId = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMzMzNzNjIiByeD0iOCIvPgo8cGF0aCBkPSJNMTUgMzBIOTBWNjBIMTV6IiBmaWxsPSIjNGY4YWY3Ii8+CjxwYXRoIGQ9Ik0xNSA4MEgyNDBWMTAwSDE1eiIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNMTUgMTEwSDIwMFYxMzBIMTV6IiBmaWxsPSIjOTRhM2I4Ii8+CjxwYXRoIGQ9Ik0xNSAxNDBIMTgwVjE2MEgxNXoiIGZmlsbD0iIzk0YTNiOCIvPgo8L3N2Zz4=';
       dispatch({ type: 'SET_ID_FRONT', idFront: simulatedId });
     }, 1500);
   };
@@ -100,18 +101,36 @@ export function Identification() {
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    
+
     setIsSubmitting(true);
-    
-    // Simulate API submission
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    dispatch({ type: 'SUBMIT_IDENTIFICATION' });
-    toast({ title: "Identification submitted successfully!" });
-    setIsSubmitting(false);
-    
-    // Move to next step
-    dispatch({ type: 'SET_STEP', step: 3 });
+
+    try {
+      const result = await captureIdentification(
+        state.data.idFront as string,
+        selectedIdType?.requiresBoth ? state.data.idBack : undefined
+      );
+
+      if (result.success) {
+        dispatch({ type: 'SUBMIT_IDENTIFICATION' });
+        toast({ title: "Identification submitted successfully!" });
+        dispatch({ type: 'SET_STEP', step: 3 });
+      } else {
+        toast({ 
+          title: "Submission Error", 
+          description: result.message || 'Failed to submit identification. Please ensure all required fields are provided.', 
+          variant: "destructive" 
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting identification:', error);
+      toast({ 
+        title: "Submission Error", 
+        description: error instanceof Error ? error.message : 'An unexpected error occurred', 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -320,17 +339,17 @@ export function Identification() {
                             title="Clear document"
                           >
                             <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
-                          <img 
-                            src={state.data.idBack} 
-                            alt="ID back" 
-                            className="max-w-xs max-h-32 object-contain rounded-lg"
-                          />
-                        </div>
-                        <p className="text-sm text-green-600 font-semibold">✓ Captured successfully</p>
+                        </button>
                       </div>
+                      <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
+                        <img 
+                          src={state.data.idBack} 
+                          alt="ID back" 
+                          className="max-w-xs max-h-32 object-contain rounded-lg"
+                        />
+                      </div>
+                      <p className="text-sm text-green-600 font-semibold">✓ Captured successfully</p>
+                    </div>
                     ) : captureMode === 'scan' ? (
                       <div className="space-y-4">
                         <Scan className="w-12 h-12 text-primary mx-auto" />

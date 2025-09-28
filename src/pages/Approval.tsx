@@ -129,7 +129,9 @@ const Approval = () => {
 
     if (!searchResults?.data?.unapproved) return;
 
-    const imageTypes = Object.keys(searchResults.data.unapproved);
+    const imageTypes = Object.keys(searchResults.data.unapproved).filter(
+      key => searchResults.data.unapproved[key] && searchResults.data.unapproved[key].trim() !== ''
+    );
 
     if (imageTypes.length === 0) return;
 
@@ -181,7 +183,9 @@ const Approval = () => {
 
     if (!searchResults?.data?.unapproved) return;
 
-    const imageTypes = Object.keys(searchResults.data.unapproved);
+    const imageTypes = Object.keys(searchResults.data.unapproved).filter(
+      key => searchResults.data.unapproved[key] && searchResults.data.unapproved[key].trim() !== ''
+    );
 
     if (imageTypes.length === 0) return;
 
@@ -239,13 +243,13 @@ const Approval = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {image ? (
+        {image && image.trim() !== '' ? (
           <div className="space-y-2">
-            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+            <div className="aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
               <img
                 src={image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`}
                 alt={title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
             <Dialog>
@@ -268,8 +272,8 @@ const Approval = () => {
             </Dialog>
           </div>
         ) : (
-          <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-            <span className="text-gray-400 text-sm">No image</span>
+          <div className="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center">
+            <span className="text-gray-400 text-sm">No image available</span>
           </div>
         )}
       </CardContent>
@@ -278,28 +282,13 @@ const Approval = () => {
 
   // Get all image configs
   const getAllImageConfigs = (data: NonNullable<SearchImagesResponse['data']>): StepImageConfig[] => {
-    const hasFrontBack = 'id_front' in data.unapproved || 'id_back' in data.unapproved ||
-                         'id_front' in data.approved || 'id_back' in data.approved;
-
     const configs: StepImageConfig[] = [
       { key: 'photo', title: 'Photo', icon: Camera },
       { key: 'accsign', title: 'Signature', icon: PenTool },
-    ];
-
-    if (hasFrontBack) {
-      configs.push(
-        { key: 'id_front', title: 'ID Document (Front)', icon: FileText },
-        { key: 'id_back', title: 'ID Document (Back)', icon: FileText }
-      );
-    } else {
-      configs.push(
-        { key: 'id', title: 'ID Document', icon: FileText }
-      );
-    }
-
-    configs.push(
+      { key: 'id_front', title: 'ID Document (Front)', icon: FileText },
+      { key: 'id_back', title: 'ID Document (Back)', icon: FileText },
       { key: 'fingerprint', title: 'Fingerprint', icon: Fingerprint }
-    );
+    ];
 
     return configs;
   };
@@ -309,12 +298,18 @@ const Approval = () => {
     if (!searchResults?.data) return null;
 
     const allConfigs = getAllImageConfigs(searchResults.data);
-    const unapprovedConfigs = allConfigs.filter(config => !!searchResults.data.unapproved[config.key]);
+    const unapprovedConfigs = allConfigs.filter(config => 
+      searchResults.data.unapproved[config.key] && 
+      searchResults.data.unapproved[config.key].trim() !== ''
+    );
 
     if (unapprovedConfigs.length === 0) return null;
 
+    // Use 4 columns if exactly 4 cards (e.g., id_back is empty), else 5
+    const gridCols = unapprovedConfigs.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-5';
+
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4`}>
         {unapprovedConfigs.map((config) => (
           <ImageCard
             key={config.key}
@@ -333,53 +328,42 @@ const Approval = () => {
     if (!searchResults?.data?.approved) return null;
 
     const { approved } = searchResults.data;
-    const hasIdFrontBack = 'id_front' in approved || 'id_back' in approved;
+    const allEmpty = ![
+      approved.photo,
+      approved.accsign,
+      approved.fingerprint,
+      approved.id_front,
+      approved.id_back
+    ].some(img => img && img.trim() !== '');
 
-    const gridCols = hasIdFrontBack ? 'lg:grid-cols-5' : 'lg:grid-cols-4'; // Adjust if front/back
+    let configsToRender: StepImageConfig[];
+    let validImageCount: number;
+
+    if (allEmpty) {
+      // When all fields are empty, show all cards
+      configsToRender = getAllImageConfigs(searchResults.data);
+      validImageCount = configsToRender.length; // 5
+    } else {
+      // When at least one field has data, only show cards with valid data
+      configsToRender = getAllImageConfigs(searchResults.data).filter(config => 
+        approved[config.key] && approved[config.key].trim() !== ''
+      );
+      validImageCount = configsToRender.length;
+    }
+
+    const gridCols = validImageCount <= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-5';
 
     return (
       <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4`}>
-        <ImageCard
-          title="Photo"
-          icon={Camera}
-          image={approved.photo}
-          type="approved"
-        />
-        <ImageCard
-          title="Signature"
-          icon={PenTool}
-          image={approved.accsign}
-          type="approved"
-        />
-        {hasIdFrontBack ? (
-          <>
-            <ImageCard
-              title="ID Document (Front)"
-              icon={FileText}
-              image={approved.id_front}
-              type="approved"
-            />
-            <ImageCard
-              title="ID Document (Back)"
-              icon={FileText}
-              image={approved.id_back}
-              type="approved"
-            />
-          </>
-        ) : (
+        {configsToRender.map(config => (
           <ImageCard
-            title="ID Document"
-            icon={FileText}
-            image={approved.id}
+            key={config.key}
+            title={config.title}
+            icon={config.icon}
+            image={approved[config.key]}
             type="approved"
           />
-        )}
-        <ImageCard
-          title="Fingerprint"
-          icon={Fingerprint}
-          image={approved.fingerprint}
-          type="approved"
-        />
+        ))}
       </div>
     );
   };
@@ -388,22 +372,29 @@ const Approval = () => {
   const renderActionButtons = () => {
     if (!searchResults?.data) return null;
 
-    const hasUnapproved = Object.keys(searchResults.data.unapproved).length > 0;
+    const allUnapprovedEmpty = !Object.values(searchResults.data.unapproved).some(
+      img => img && img.trim() !== ''
+    );
 
-    if (!hasUnapproved) return null;
+    if (allUnapprovedEmpty) return null;
 
     return (
       <div className="flex gap-2">
         <Button
           onClick={handleApprove}
           className="bg-green-600 hover:bg-green-700"
+          disabled={allUnapprovedEmpty}
         >
           <CheckCircle className="w-4 h-4 mr-2" />
           Approve
         </Button>
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" className="border-red-200 text-red-700 hover:bg-red-50">
+            <Button
+              variant="outline"
+              className="border-red-200 text-red-700 hover:bg-red-50"
+              disabled={allUnapprovedEmpty}
+            >
               <XCircle className="w-4 h-4 mr-2" />
               Reject
             </Button>

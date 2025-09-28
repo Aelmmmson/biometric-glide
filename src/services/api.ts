@@ -5,6 +5,11 @@ export interface CaptureResponse {
   message?: string;
 }
 
+export interface IdCaptureResponse {
+  status: 'success' | 'error';
+  message?: string;
+}
+
 export interface FingerprintResponse {
   response_code: number;
   response_msg: string;
@@ -18,7 +23,7 @@ export interface SearchImagesResponse {
     approved?: {
       photo?: string;
       accsign?: string;
-      id?: string;
+      // id?: string;
       id_front?: string;
       id_back?: string;
       fingerprint?: string;
@@ -26,7 +31,7 @@ export interface SearchImagesResponse {
     unapproved?: {
       photo?: string;
       accsign?: string;
-      id?: string;
+      // id?: string;
       id_front?: string;
       id_back?: string;
       fingerprint?: string;
@@ -62,70 +67,45 @@ export const captureBrowse = async (
   cus_no?: string
 ): Promise<CaptureResponse> => {
   try {
-
-    // console.log("Starting captureBrowse...",getRelationNumber());
     const relationNumber = cus_no || getRelationNumber();
     const base64Data = getBase64String(imageData);
     const typeStr = type;
 
-    // Log request payload for debugging
-    // console.log('captureBrowse request payload:', {
-    //   imageData: base64Data.slice(0, 50) + '...', // Truncate for readability
-    //   typeStr,
-    //   cus_no: relationNumber,
-    // });
-
-    // Create FormData to match server expectations
     const formData = new FormData();
-    
-    // Common fields similar to saveData
     formData.append("cus_no", relationNumber);
     formData.append("a", typeStr.toString());
     formData.append("imageData", imageData);
 
-    // Append image based on type
     if (type === 1) {
-      // Photo
       formData.append("image", base64Data);
     } else if (type === 2) {
-      // Signature
       formData.append("image", base64Data);
     }
 
     const response = await fetch('http://10.203.14.169/imaging/capture_browse', {
       method: 'POST',
-      body: formData, // Send as FormData
+      body: formData,
     });
 
     const contentType = response.headers.get('Content-Type');
     const responseText = await response.text();
-
-    // Log response details
-    // console.log('captureBrowse response:', {
-    //   status: response.status,
-    //   contentType,
-    //   responseText,
-    // });
 
     if (!response.ok) {
       console.error('captureBrowse server error:', responseText, 'Status:', response.status);
       throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
     }
 
-    // Handle PHP-style "Array ()" response
     if (responseText.trim() === 'Array ()') {
       console.warn('Received empty PHP array response, treating as empty JSON array');
       return {
-        success: true, // Assume success for empty array, adjust based on server behavior
+        success: true,
         message: 'No data returned from server (empty array)'
       };
     }
 
-    // Check if response is JSON
     if (contentType?.includes('application/json')) {
       try {
         const result = JSON.parse(responseText);
-        // Handle array response
         if (Array.isArray(result)) {
           const firstItem = result[0] || {};
           return {
@@ -133,7 +113,6 @@ export const captureBrowse = async (
             message: firstItem.message || 'Image processed successfully (array response)'
           };
         }
-        // Handle object response
         return {
           success: result.success !== undefined ? result.success : true,
           message: result.message || 'Image processed successfully'
@@ -144,13 +123,11 @@ export const captureBrowse = async (
       }
     }
 
-    // Handle non-JSON response
     console.warn('Non-JSON response received:', responseText);
     return {
       success: responseText.toLowerCase().includes('success'),
       message: responseText || 'Non-JSON response received from server'
     };
-
   } catch (error) {
     console.error('Error in captureBrowse:', error);
     return { 
@@ -160,19 +137,98 @@ export const captureBrowse = async (
   }
 };
 
+// Capture identification details
+export const captureIdentification = async (
+  idFrontImage: string,
+  idBackImage?: string,
+  cus_no?: string
+): Promise<CaptureResponse> => {
+  try {
+    const relationNumber = cus_no || getRelationNumber();
+    const idFrontBase64 = getBase64String(idFrontImage);
+    const idBackBase64 = idBackImage ? getBase64String(idBackImage) : '';
+
+    const payload = {
+      id_front_image: idFrontBase64,
+      id_back_image: idBackBase64, // Send empty string if idBackImage is not provided
+    };
+
+    const response = await fetch(`http://10.203.14.169/imaging/capture_id_details-${relationNumber}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const contentType = response.headers.get('Content-Type');
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      console.error('captureIdentification server error:', responseText, 'Status:', response.status);
+      throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+    }
+
+    // Handle PHP notices by extracting valid JSON
+    let jsonResponse: IdCaptureResponse;
+    try {
+      // Check if response is a PHP empty array
+      if (responseText.trim() === 'Array ()') {
+        console.warn('Received empty PHP array response, treating as empty JSON array');
+        return {
+          success: true,
+          message: 'No data returned from server (empty array)'
+        };
+      }
+
+      // Attempt to find JSON within the response by extracting content between the last '{' and '}'
+      const jsonStart = responseText.lastIndexOf('{');
+      const jsonEnd = responseText.lastIndexOf('}') + 1;
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonStart < jsonEnd) {
+        const jsonString = responseText.substring(jsonStart, jsonEnd);
+        jsonResponse = JSON.parse(jsonString);
+      } else {
+        throw new Error('No valid JSON found in response');
+      }
+    } catch (jsonError) {
+      console.error('JSON parsing error:', jsonError, 'Response text:', responseText);
+      throw new Error('Invalid JSON response from server');
+    }
+
+    // Handle JSON response
+    if (jsonResponse.status === 'error') {
+      return {
+        success: false,
+        message: jsonResponse.message || 'Failed to process identification'
+      };
+    }
+
+    return {
+      success: true,
+      message: jsonResponse.message || 'Identification processed successfully'
+    };
+  } catch (error) {
+    console.error('Error in captureIdentification:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to capture identification'
+    };
+  }
+};
+
 // Final submission for photo and signature
 export const saveData = async (data: {
   photoData: string;
   signatureData: string;
   cus_no?: string;
-  batchNumber: string; // Added to match NextJS api.ts
+  batchNumber: string;
 }): Promise<CaptureResponse> => {
   try {
     const relationNumber = data.cus_no || getRelationNumber();
     const photoBase64 = getBase64String(data.photoData);
     const signatureBase64 = getBase64String(data.signatureData);
 
-    // Create FormData
     const formData = new FormData();
     formData.append("accno", "");
     formData.append("signname", "");
@@ -191,7 +247,6 @@ export const saveData = async (data: {
     formData.append("customerno", "");
     formData.append("action", "add");
 
-    // Make the API call with FormData
     const response = await fetch('http://10.203.14.169/imaging/savedata', {
       method: 'POST',
       body: formData,
@@ -249,14 +304,11 @@ export const captureFingerprint = async (relationNumber?: string): Promise<Finge
       body: formData,
     });
 
-    // console.log('Fingerprint capture response status:', response);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
 
     const result = await response.json();
-    // console.log('Fingerprint capture response status:', result);
     return result;
   } catch (error) {
     console.error('Error capturing fingerprint:', error);
@@ -323,17 +375,13 @@ export const approveCustomerImages = async (params: {
         },
       }
     );
-    // console.log('Approve images response:',response.ok);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    // const result = await response.json();
-    const result = response;
-    // console.log('Approve images result:',result);
-    // Normalize response based on backend returning code 0 for success
-    if (result.status === 200) {
+    const result = await response.json();
+    if (result.code === 0) {
       return {
         status: 'success',
         message: 'Image approved successfully',
@@ -342,7 +390,7 @@ export const approveCustomerImages = async (params: {
     } else {
       return {
         status: 'error',
-        message: result.statusText || 'Failed to approve image'
+        message: result.message || 'Failed to approve image'
       };
     }
   } catch (error) {
@@ -357,7 +405,6 @@ export const approveCustomerImages = async (params: {
 // Simulate rejection (placeholder)
 export const rejectCustomerImages = async (relationno: string, reason: string, imageTypes: string[]): Promise<ApprovalResponse> => {
   try {
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     return {
