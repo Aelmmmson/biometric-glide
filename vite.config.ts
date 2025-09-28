@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 8089,
     // ADD THIS LINE - crucial for client-side routing
     historyApiFallback: true,
   },

@@ -35,8 +35,8 @@ export function Fingerprint() {
       setScanProgress(50);
       
       const captureResult = await captureFingerprint();
-      
-      if (captureResult.response_code === 1 && captureResult.image) {
+      // console.log('Capture Result:', captureResult);
+      if (captureResult.response_code === 1) {
         // Success - set progress to 100%
         setScanProgress(100);
         
