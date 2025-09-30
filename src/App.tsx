@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { BiometricProvider } from "@/contexts/BiometricContext";
 import Index from "./pages/Index";
 import Approval from "./pages/Approval";
+import Update from "./pages/Update";
+import Enquiry from "./pages/Enquiry";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,12 +20,15 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Make sure this route comes FIRST */}
-            <Route path="/:dataUrl?" element={<Index />} />
             {/* Capture phase routes */}
             <Route path="/capture-:relationId" element={<Index />} />
             {/* Approval phase route */}
             <Route path="/approve" element={<Approval />} />
+            {/* Update phase route */}
+            <Route path="/update" element={<Update />} />
+            {/* Enquiry phase route */}
+            <Route path="/viewimage-:customerId" element={<Enquiry />} />
+            {/* Default route */}
             <Route path="/" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

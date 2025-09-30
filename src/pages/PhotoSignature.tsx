@@ -6,14 +6,18 @@ import { Button } from '@/components/ui/button';
 import { useBiometric } from '@/contexts/BiometricContext';
 import { toast } from '@/hooks/use-toast';
 import { listener, startTablet, ClearTablet, LcdRefresh, stopTablet } from './SigWebTablet';
-import { captureBrowse, saveData, getRelationNumber } from '@/services/api';
+import { captureBrowse, saveData, updateData, getRelationNumber, getUpdateRelationNumber } from '@/services/api';
 import { ImageEditor } from '@/components/ImageEditor';
 
 interface ExtendedWindow extends Window {
   sigWebInitialized?: boolean;
 }
 
-export function PhotoSignature() {
+interface PhotoSignatureProps {
+  mode?: 'capture' | 'update';
+}
+
+export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
   const { state, dispatch } = useBiometric();
   const [photoMode, setPhotoMode] = useState<'capture' | 'upload'>('capture');
   const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
@@ -150,8 +154,9 @@ export function PhotoSignature() {
     setIsSubmitting(true);
     
     try {
-      // Final submission to database
-      const result = await saveData({
+      // Use updateData for update mode, saveData for capture mode
+      const submitFn = mode === 'update' ? updateData : saveData;
+      const result = await submitFn({
         photoData: state.data.photo!,
         signatureData: state.data.signature!,
         batchNumber: ''
@@ -159,7 +164,7 @@ export function PhotoSignature() {
       
       if (result.success) {
         dispatch({ type: 'SUBMIT_PHOTO_SIGNATURE' });
-        toast({ title: "Photo & Signature submitted successfully!" });
+        toast({ title: `Photo & Signature ${mode === 'update' ? 'updated' : 'submitted'} successfully!` });
         
         // Move to next step
         dispatch({ type: 'SET_STEP', step: 2 });
@@ -195,9 +200,9 @@ export function PhotoSignature() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        <h2 className="text-2xl font-bold mb-1">Photo & Signature</h2>
+        <h2 className="text-2xl font-bold mb-1">{mode === 'update' ? 'Update Photo & Signature' : 'Photo & Signature'}</h2>
         <p className="text-muted-foreground mb-6">
-          Capture or upload your photo and signature.
+          {mode === 'update' ? 'Update your photo and signature.' : 'Capture or upload your photo and signature.'}
         </p>
 
         <div className="grid md:grid-cols-2 gap-8">
