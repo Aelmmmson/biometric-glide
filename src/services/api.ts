@@ -354,7 +354,7 @@ export const searchImages = async (relationno: string): Promise<SearchImagesResp
   }
 };
 
-// Approve customer images
+// Approve customer images - COMPREHENSIVE VERSION (handles both JSON and plain text)
 export const approveCustomerImages = async (params: {
   relationno: string;
   batch: string;
@@ -380,17 +380,78 @@ export const approveCustomerImages = async (params: {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
-    if (result.code === 0) {
+    const contentType = response.headers.get('Content-Type');
+    const responseText = await response.text();
+
+    console.log('Approval response:', { contentType, responseText }); // Debug log
+
+    // Handle plain text success responses
+    const cleanResponse = responseText.trim().toLowerCase();
+    
+    if (cleanResponse === '1' || cleanResponse === 'success') {
       return {
         status: 'success',
         message: 'Image approved successfully',
         code: 0
       };
-    } else {
+    }
+
+    // Handle other plain text responses
+    if (!contentType?.includes('application/json')) {
+      // Check if it's a success message in plain text
+      if (cleanResponse.includes('success') || cleanResponse === '1') {
+        return {
+          status: 'success',
+          message: 'Image approved successfully',
+          code: 0
+        };
+      }
+      
+      // Check if it's an error message in plain text
+      if (cleanResponse.includes('error') || cleanResponse.includes('fail')) {
+        return {
+          status: 'error',
+          message: responseText || 'Approval failed'
+        };
+      }
+
+      // Default handling for unknown plain text responses
       return {
         status: 'error',
-        message: result.message || 'Failed to approve image'
+        message: `Unexpected response: ${responseText}`
+      };
+    }
+
+    // Handle JSON response (if backend ever returns JSON)
+    try {
+      const result = JSON.parse(responseText);
+      if (result.code === 0 || result.status === 'success') {
+        return {
+          status: 'success',
+          message: result.message || 'Image approved successfully',
+          code: result.code || 0
+        };
+      } else {
+        return {
+          status: 'error',
+          message: result.message || 'Failed to approve image'
+        };
+      }
+    } catch (jsonError) {
+      console.error('JSON parsing error:', jsonError, 'Response text:', responseText);
+      
+      // Final fallback - if we couldn't parse JSON but have success indicators
+      if (responseText.toLowerCase().includes('success') || responseText === '1') {
+        return {
+          status: 'success',
+          message: 'Image approved successfully',
+          code: 0
+        };
+      }
+      
+      return {
+        status: 'error',
+        message: 'Invalid response format from server'
       };
     }
   } catch (error) {
