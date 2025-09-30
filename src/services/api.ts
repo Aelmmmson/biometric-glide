@@ -23,7 +23,6 @@ export interface SearchImagesResponse {
     approved?: {
       photo?: string;
       accsign?: string;
-      // id?: string;
       id_front?: string;
       id_back?: string;
       fingerprint?: string;
@@ -31,12 +30,23 @@ export interface SearchImagesResponse {
     unapproved?: {
       photo?: string;
       accsign?: string;
-      // id?: string;
       id_front?: string;
       id_back?: string;
       fingerprint?: string;
     };
   };
+}
+
+export interface EnquiryImagesResponse {
+  status: 'success' | 'error' | 'not_found';
+  message: string;
+  data?: Array<{
+    photo?: string;
+    accsign?: string;
+    id_front?: string;
+    id_back?: string;
+    fingerprint?: string;
+  }>;
 }
 
 export interface ApprovalResponse {
@@ -49,6 +59,19 @@ export interface ApprovalResponse {
 export const getRelationNumber = (): string => {
   const path = window.location.pathname;
   const match = path.match(/\/capture-(\d+)/);
+  return match ? match[1] : '000001'; // Default fallback
+};
+
+// Extract relation number from URL query params like /update?relationno=232
+export const getUpdateRelationNumber = (): string => {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('relationno') || '000001'; // Default fallback
+};
+
+// Extract customer ID from URL path like /viewimage-232
+export const getCustomerId = (): string => {
+  const path = window.location.pathname;
+  const match = path.match(/\/viewimage-(\d+)/);
   return match ? match[1] : '000001'; // Default fallback
 };
 
@@ -150,7 +173,7 @@ export const captureIdentification = async (
 
     const payload = {
       id_front_image: idFrontBase64,
-      id_back_image: idBackBase64, // Send empty string if idBackImage is not provided
+      id_back_image: idBackBase64,
     };
 
     const response = await fetch(`http://10.203.14.169/imaging/capture_id_details-${relationNumber}`, {
@@ -170,10 +193,8 @@ export const captureIdentification = async (
       throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
     }
 
-    // Handle PHP notices by extracting valid JSON
     let jsonResponse: IdCaptureResponse;
     try {
-      // Check if response is a PHP empty array
       if (responseText.trim() === 'Array ()') {
         console.warn('Received empty PHP array response, treating as empty JSON array');
         return {
@@ -182,7 +203,6 @@ export const captureIdentification = async (
         };
       }
 
-      // Attempt to find JSON within the response by extracting content between the last '{' and '}'
       const jsonStart = responseText.lastIndexOf('{');
       const jsonEnd = responseText.lastIndexOf('}') + 1;
       if (jsonStart !== -1 && jsonEnd !== -1 && jsonStart < jsonEnd) {
@@ -196,7 +216,6 @@ export const captureIdentification = async (
       throw new Error('Invalid JSON response from server');
     }
 
-    // Handle JSON response
     if (jsonResponse.status === 'error') {
       return {
         success: false,
@@ -223,6 +242,7 @@ export const saveData = async (data: {
   signatureData: string;
   cus_no?: string;
   batchNumber: string;
+  action?: 'add' | 'ammend';
 }): Promise<CaptureResponse> => {
   try {
     const relationNumber = data.cus_no || getRelationNumber();
@@ -245,7 +265,7 @@ export const saveData = async (data: {
     formData.append("relationid", relationNumber);
     formData.append("batchno", data.batchNumber);
     formData.append("customerno", "");
-    formData.append("action", "add");
+    formData.append("action", data.action || "add");
 
     const response = await fetch('http://10.203.14.169/imaging/savedata', {
       method: 'POST',
@@ -265,6 +285,19 @@ export const saveData = async (data: {
       message: error instanceof Error ? error.message : 'Unknown error occurred' 
     };
   }
+};
+
+// Wrapper for updating existing data
+export const updateData = async (data: {
+  photoData: string;
+  signatureData: string;
+  cus_no?: string;
+  batchNumber: string;
+}): Promise<CaptureResponse> => {
+  return saveData({
+    ...data,
+    action: 'ammend'
+  });
 };
 
 // Initialize fingerprint device
@@ -354,6 +387,41 @@ export const searchImages = async (relationno: string): Promise<SearchImagesResp
   }
 };
 
+// Fetch customer images for enquiry phase
+export const enquiryImages = async (customerId: string): Promise<EnquiryImagesResponse> => {
+  try {
+    const response = await fetch(`http://10.203.14.169/imaging/api/enquiry-${customerId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return {
+          status: 'not_found',
+          message: 'No images found for this customer'
+        };
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return {
+      status: 'success',
+      message: 'Images retrieved successfully',
+      data: Array.isArray(result) ? result : [result]
+    };
+  } catch (error) {
+    console.error('Error in enquiryImages:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to retrieve images'
+    };
+  }
+};
+
 // Approve customer images - COMPREHENSIVE VERSION (handles both JSON and plain text)
 export const approveCustomerImages = async (params: {
   relationno: string;
@@ -383,9 +451,8 @@ export const approveCustomerImages = async (params: {
     const contentType = response.headers.get('Content-Type');
     const responseText = await response.text();
 
-    console.log('Approval response:', { contentType, responseText }); // Debug log
+    console.log('Approval response:', { contentType, responseText });
 
-    // Handle plain text success responses
     const cleanResponse = responseText.trim().toLowerCase();
     
     if (cleanResponse === '1' || cleanResponse === 'success') {
@@ -396,9 +463,7 @@ export const approveCustomerImages = async (params: {
       };
     }
 
-    // Handle other plain text responses
     if (!contentType?.includes('application/json')) {
-      // Check if it's a success message in plain text
       if (cleanResponse.includes('success') || cleanResponse === '1') {
         return {
           status: 'success',
@@ -407,7 +472,6 @@ export const approveCustomerImages = async (params: {
         };
       }
       
-      // Check if it's an error message in plain text
       if (cleanResponse.includes('error') || cleanResponse.includes('fail')) {
         return {
           status: 'error',
@@ -415,14 +479,12 @@ export const approveCustomerImages = async (params: {
         };
       }
 
-      // Default handling for unknown plain text responses
       return {
         status: 'error',
         message: `Unexpected response: ${responseText}`
       };
     }
 
-    // Handle JSON response (if backend ever returns JSON)
     try {
       const result = JSON.parse(responseText);
       if (result.code === 0 || result.status === 'success') {
@@ -440,7 +502,6 @@ export const approveCustomerImages = async (params: {
     } catch (jsonError) {
       console.error('JSON parsing error:', jsonError, 'Response text:', responseText);
       
-      // Final fallback - if we couldn't parse JSON but have success indicators
       if (responseText.toLowerCase().includes('success') || responseText === '1') {
         return {
           status: 'success',
