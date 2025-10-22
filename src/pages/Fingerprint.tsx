@@ -1,80 +1,170 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Fingerprint as FingerprintIcon, CheckCircle, X } from 'lucide-react';
+import { Fingerprint as FingerprintIcon, CheckCircle, X, Image as ImageIcon, Eye } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
 import { useBiometric } from '@/contexts/BiometricContext';
-import { initFingerprint, captureFingerprint } from '@/services/api';
+import { initFingerprint, captureThumbprint, searchImages, SearchImagesResponse, getRelationNumber } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
-export function Fingerprint() {
+interface FingerprintProps {
+  mode?: 'capture' | 'update';
+}
+
+export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
   const { state, dispatch } = useBiometric();
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
+  const [isScanningThumb1, setIsScanningThumb1] = useState(false);
+  const [scanProgressThumb1, setScanProgressThumb1] = useState(0);
+  const [isScanningThumb2, setIsScanningThumb2] = useState(false);
+  const [scanProgressThumb2, setScanProgressThumb2] = useState(0);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAsideOpen, setIsAsideOpen] = useState(false);
+  const [images, setImages] = useState<SearchImagesResponse | null>(null);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const hasAutoClosed = useRef(false);
 
-  const handleStartScan = async () => {
-    setIsScanning(true);
-    setScanProgress(0);
+  useEffect(() => {
+    if (mode === 'update') {
+      const relationNo = getRelationNumber();
+      searchImages(relationNo).then(setImages).catch(console.error);
+      setIsAsideOpen(true);
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode === 'update' && images && isAsideOpen && !hasAutoClosed.current) {
+      hasAutoClosed.current = true;
+      const timer = setTimeout(() => {
+        setIsAsideOpen(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [mode, images, isAsideOpen]);
+
+  const getImageSrc = (image?: string) => {
+    if (!image || image.trim() === '') return undefined;
+    return image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`;
+  };
+
+  const handleStartScanThumb1 = async () => {
+    setIsScanningThumb1(true);
+    setScanProgressThumb1(0);
 
     try {
-      // Step 1: Initialize fingerprint device
-      toast({ title: "Initializing fingerprint device..." });
-      const initResult = await initFingerprint();
-      
-      if (!initResult.success) {
-        throw new Error(initResult.message || 'Failed to initialize device');
+      // Step 1: Initialize fingerprint device (only once, but call for safety)
+      if (!isScanningThumb2) {
+        toast({ title: "Initializing fingerprint device..." });
+        const initResult = await initFingerprint();
+        
+        if (!initResult.success) {
+          throw new Error(initResult.message || 'Failed to initialize device');
+        }
       }
 
-      setScanProgress(25);
-      toast({ title: "Device initialized. Please place finger on scanner." });
+      setScanProgressThumb1(25);
+      toast({ title: "Device initialized. Please place right thumb on scanner." });
 
-      // Step 2: Capture fingerprint
+      // Step 2: Capture fingerprint for thumb 1
       await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause for user
-      setScanProgress(50);
+      setScanProgressThumb1(50);
       
-      const captureResult = await captureFingerprint();
-      // console.log('Capture Result:', captureResult);
+      const captureResult = await captureThumbprint('1');
       if (captureResult.response_code === 1) {
         // Success - set progress to 100%
-        setScanProgress(100);
+        setScanProgressThumb1(100);
         
         // Convert base64 to data URL
         const fingerprintData = `data:image/jpeg;base64,${captureResult.image}`;
-        dispatch({ type: 'SET_FINGERPRINT', fingerprint: fingerprintData });
+        dispatch({ type: 'SET_THUMBPRINT1', thumbprint1: fingerprintData });
         
-        toast({ title: "Fingerprint captured and saved to database successfully!" });
-        setIsScanning(false);
+        toast({ title: "Right thumb captured and saved to database successfully!" });
+        setIsScanningThumb1(false);
       } else {
-        throw new Error(captureResult.response_msg || 'Failed to capture fingerprint');
+        throw new Error(captureResult.response_msg || 'Failed to capture right thumb');
       }
     } catch (error) {
-      console.error('Fingerprint capture error:', error);
-      setIsScanning(false);
-      setScanProgress(0);
+      console.error('Right thumb capture error:', error);
+      setIsScanningThumb1(false);
+      setScanProgressThumb1(0);
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({ 
-        title: "Fingerprint capture failed", 
+        title: "Right thumb capture failed", 
         description: errorMessage,
         variant: "destructive" 
       });
     }
   };
 
-  const handleClearFingerprint = () => {
-    dispatch({ type: 'SET_FINGERPRINT', fingerprint: null });
+  const handleStartScanThumb2 = async () => {
+    setIsScanningThumb2(true);
+    setScanProgressThumb2(0);
+
+    try {
+      // Step 1: Initialize fingerprint device (if not already)
+      if (!isScanningThumb1) {
+        toast({ title: "Initializing fingerprint device..." });
+        const initResult = await initFingerprint();
+        
+        if (!initResult.success) {
+          throw new Error(initResult.message || 'Failed to initialize device');
+        }
+      }
+
+      setScanProgressThumb2(25);
+      toast({ title: "Device initialized. Please place left thumb on scanner." });
+
+      // Step 2: Capture fingerprint for thumb 2
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause for user
+      setScanProgressThumb2(50);
+      
+      const captureResult = await captureThumbprint('2');
+      if (captureResult.response_code === 1) {
+        // Success - set progress to 100%
+        setScanProgressThumb2(100);
+        
+        // Convert base64 to data URL
+        const fingerprintData = `data:image/jpeg;base64,${captureResult.image}`;
+        dispatch({ type: 'SET_THUMBPRINT2', thumbprint2: fingerprintData });
+        
+        toast({ title: "Left thumb captured and saved to database successfully!" });
+        setIsScanningThumb2(false);
+      } else {
+        throw new Error(captureResult.response_msg || 'Failed to capture left thumb');
+      }
+    } catch (error) {
+      console.error('Left thumb capture error:', error);
+      setIsScanningThumb2(false);
+      setScanProgressThumb2(0);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast({ 
+        title: "Left thumb capture failed", 
+        description: errorMessage,
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleClearThumbprint1 = () => {
+    dispatch({ type: 'SET_THUMBPRINT1', thumbprint1: null });
+  };
+
+  const handleClearThumbprint2 = () => {
+    dispatch({ type: 'SET_THUMBPRINT2', thumbprint2: null });
   };
 
   const handleNext = () => {
-    dispatch({ type: 'SUBMIT_FINGERPRINT' });
+    dispatch({ type: 'SUBMIT_THUMBPRINTS' }); // Fixed: Use 'SUBMIT_THUMBPRINTS' to match BiometricAction
     dispatch({ type: 'SET_STEP', step: 4 });
   };
 
   const handleBack = () => {
     dispatch({ type: 'SET_STEP', step: 2 });
   };
+
+  const canContinue = state.data.thumbprint1 && state.data.thumbprint2;
 
   return (
     <>
@@ -84,207 +174,404 @@ export function Fingerprint() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
         >
-          <h2 className="text-2xl font-bold mb-1">Fingerprint Capture</h2>
-          <p className="text-muted-foreground mb-6">
-            Place your finger on the scanner.
-          </p>
-
-          <div className="flex flex-col items-center space-y-8">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="relative"
-            >
-              <div className="w-56 h-56 bg-gradient-to-br from-accent to-muted rounded-full flex items-center justify-center border-4 border-primary/20 relative overflow-hidden">
-                {state.data.fingerprint ? (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.5 }}
-                    className="text-center"
-                  >
-                    <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
-                    <p className="font-semibold text-green-600">Fingerprint Captured</p>
-                  </motion.div>
-                ) : isScanning ? (
-                  <div className="text-center">
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 1, repeat: Infinity }}
-                    >
-                      <FingerprintIcon className="w-20 h-20 text-primary mb-2" />
-                    </motion.div>
-                    <p className="font-semibold text-primary">Scanning...</p>
-                    <p className="text-sm text-muted-foreground">{scanProgress}%</p>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <FingerprintIcon className="w-20 h-20 text-muted-foreground mb-2 mx-auto" />
-                    <p className="font-semibold">Place finger here</p>
-                  </div>
-                )}
-
-                {/* Scanning animation overlay */}
-                {isScanning && (
-                  <motion.div
-                    className="absolute inset-0 bg-primary/10"
-                    initial={{ clipPath: 'circle(0% at 50% 50%)' }}
-                    animate={{ clipPath: `circle(${scanProgress / 2}% at 50% 50%)` }}
-                    transition={{ duration: 0.1 }}
-                  />
-                )}
-              </div>
-
-              {/* Pulsing rings when scanning */}
-              {isScanning && (
-                <>
-                  <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-primary/30"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                  <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-primary/20"
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                  />
-                </>
-              )}
-            </motion.div>
-
-            {!state.data.fingerprint && (
-              <div className="text-center space-y-4 w-full max-w-md">
-                <p className="text-muted-foreground">
-                  {isScanning
-                    ? "Keep your finger steady on the scanner until the process is complete."
-                    : "Click the button below to start the fingerprint scanning process."
-                  }
-                </p>
-
-                {!isScanning && (
-                  <Button
-                    onClick={handleStartScan}
-                    className="rounded-full px-8 py-3 gradient-primary shadow-button"
-                  >
-                    <FingerprintIcon className="w-4 h-4 mr-2" />
-                    Start Scanning
-                  </Button>
-                )}
-
-                {isScanning && (
-                  <div className="bg-muted/50 rounded-xl p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                      <p className="text-sm">
-                        Scanning in progress... {scanProgress}% complete
-                      </p>
-                    </div>
-                    <div className="w-full bg-border rounded-full h-2 mt-2">
-                      <motion.div
-                        className="bg-primary h-2 rounded-full"
-                        initial={{ width: '0%' }}
-                        animate={{ width: `${scanProgress}%` }}
-                        transition={{ duration: 0.1 }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Biometric Security Link (before scanning) */}
-                <div className="bg-muted/50 rounded-xl p-4 w-full">
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => setShowBiometricModal(true)}
-                      className="flex items-center gap-2 text-primary hover:underline cursor-pointer"
-                    >
-                      {/* Icon Circle */}
-                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-primary"></div>
-                      </div>
-                      {/* Text */}
-                      <span className="font-medium">Biometric Security</span>
-                    </button>
-                  </div>
-
-                  {/* <p className="text-muted-foreground text-center mt-2">
-    Your fingerprint is converted to an encrypted template and cannot be reverse-engineered. 
-    Only the mathematical pattern is stored, not the actual image.
-  </p> */}
-                </div>
-
-              </div>
-            )}
-
-            {state.data.fingerprint && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center space-y-4 w-full max-w-md"
-              >
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 relative">
-                  <button
-                    onClick={handleClearFingerprint}
-                    className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                  <h3 className="font-semibold text-green-800 mb-1">Fingerprint Captured</h3>
-                  <p className="text-xs text-green-600">
-                    Securely recorded and encrypted.
-                  </p>
-                </div>
-
-                {/* Biometric Security Link (after scanning) */}
-                <div className="bg-muted/50 rounded-xl p-4 w-full">
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => setShowBiometricModal(true)}
-                      className="flex items-center gap-2 text-primary hover:underline cursor-pointer"
-                    >
-                      {/* Icon Circle */}
-                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-primary"></div>
-                      </div>
-                      {/* Text */}
-                      <span className="font-medium">Biometric Security</span>
-                    </button>
-                  </div>
-
-                  {/* <p className="text-muted-foreground text-center mt-2">
-    Your fingerprint is converted to an encrypted template and cannot be reverse-engineered. 
-    Only the mathematical pattern is stored, not the actual image.
-  </p> */}
-                </div>
-
-              </motion.div>
-            )}
-          </div>
-
-          {/* Navigation and Submit Button */}
-          <div className="flex items-center justify-between mt-8">
-            {/* Back Button */}
-            <Button
-              onClick={handleBack}
-              variant="outline"
-              className="rounded-full px-6 py-2"
-            >
-              Back
-            </Button>
-
-            {/* Continue Button (Centered) */}
-            {state.data.fingerprint && (
+          <div className="flex justify-between items-center mb-1">
+            <h2 className="text-2xl font-bold">
+              {mode === 'update' ? 'Update Fingerprints' : 'Fingerprint Capture'}
+            </h2>
+            {mode === 'update' && !isAsideOpen && (
               <Button
-                onClick={handleNext}
-                className="rounded-full px-8 py-3 gradient-primary shadow-button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAsideOpen(true)}
+                className="flex items-center gap-1 h-8 px-3"
               >
-                Continue to Review
+                <ImageIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Images</span>
               </Button>
             )}
+          </div>
+          <p className="text-muted-foreground mb-6">
+            {mode === 'update' ? 'Update your thumbprints.' : 'Place your thumbs on the scanner.'}
+          </p>
 
-            {/* Step Indicator */}
-            <div className="text-sm text-muted-foreground">
-              Step 3 of 4
+          {mode === 'update' && isAsideOpen && images && (
+            <motion.aside
+              initial={{ x: 320 }}
+              animate={{ x: 0 }}
+              exit={{ x: 320 }}
+              transition={{ duration: 0.3 }}
+              className="fixed md:top-12 top-[4.5rem] md:right-14 right-0 md:h-[calc(98vh-6rem)] h-[calc(98vh-4.5rem)] md:w-48 w-full bg-background border border-border rounded-lg md:rounded-l-lg shadow-lg p-4 overflow-auto z-50"
+            >
+              <div className="flex justify-between items-center mb-4 sticky top-3 bg-background pb-2">
+                <h3 className="text-base font-semibold">Customer Images</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsAsideOpen(false)}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="w-4 h-4 bg-blue-50 rounded-full p-1" />
+                </Button>
+              </div>
+              {images.status !== 'success' || !images.data ? (
+                <p className="text-muted-foreground text-sm">No images available</p>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-1 text-sm uppercase tracking-wide text-muted-foreground">Unapproved</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {images.data.unapproved?.thumbprint1 && getImageSrc(images.data.unapproved.thumbprint1) && (
+                        <div className="space-y-1 relative">
+                          <span className="text-xs font-medium text-muted-foreground">Thumbprint 1</span>
+                          <div className="relative group">
+                            <img
+                              src={getImageSrc(images.data.unapproved.thumbprint1)!}
+                              alt="Unapproved Thumbprint 1"
+                              className="w-full aspect-square object-cover rounded border cursor-pointer"
+                              onClick={() => setViewingImage(getImageSrc(images.data.unapproved.thumbprint1))}
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingImage(getImageSrc(images.data.unapproved.thumbprint1));
+                              }}
+                              className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              type="button"
+                              title="View full image"
+                            >
+                              <Eye className="w-3 h-3 text-gray-600" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {images.data.unapproved?.thumbprint2 && getImageSrc(images.data.unapproved.thumbprint2) && (
+                        <div className="space-y-1 relative">
+                          <span className="text-xs font-medium text-muted-foreground">Thumbprint 2</span>
+                          <div className="relative group">
+                            <img
+                              src={getImageSrc(images.data.unapproved.thumbprint2)!}
+                              alt="Unapproved Thumbprint 2"
+                              className="w-full aspect-square object-cover rounded border cursor-pointer"
+                              onClick={() => setViewingImage(getImageSrc(images.data.unapproved.thumbprint2))}
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingImage(getImageSrc(images.data.unapproved.thumbprint2));
+                              }}
+                              className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              type="button"
+                              title="View full image"
+                            >
+                              <Eye className="w-3 h-3 text-gray-600" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1 text-sm uppercase tracking-wide text-muted-foreground">Approved</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {images.data.approved?.thumbprint1 && getImageSrc(images.data.approved.thumbprint1) && (
+                        <div className="space-y-1 relative">
+                          <span className="text-xs font-medium text-muted-foreground">Thumbprint 1</span>
+                          <div className="relative group">
+                            <img
+                              src={getImageSrc(images.data.approved.thumbprint1)!}
+                              alt="Approved Thumbprint 1"
+                              className="w-full aspect-square object-cover rounded border cursor-pointer"
+                              onClick={() => setViewingImage(getImageSrc(images.data.approved.thumbprint1))}
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingImage(getImageSrc(images.data.approved.thumbprint1));
+                              }}
+                              className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              type="button"
+                              title="View full image"
+                            >
+                              <Eye className="w-3 h-3 text-gray-600" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {images.data.approved?.thumbprint2 && getImageSrc(images.data.approved.thumbprint2) && (
+                        <div className="space-y-1 relative">
+                          <span className="text-xs font-medium text-muted-foreground">Thumbprint 2</span>
+                          <div className="relative group">
+                            <img
+                              src={getImageSrc(images.data.approved.thumbprint2)!}
+                              alt="Approved Thumbprint 2"
+                              className="w-full aspect-square object-cover rounded border cursor-pointer"
+                              onClick={() => setViewingImage(getImageSrc(images.data.approved.thumbprint2))}
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingImage(getImageSrc(images.data.approved.thumbprint2));
+                              }}
+                              className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              type="button"
+                              title="View full image"
+                            >
+                              <Eye className="w-3 h-3 text-gray-600" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.aside>
+          )}
+
+          {viewingImage && (
+            <div 
+              className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" 
+              onClick={() => setViewingImage(null)}
+            >
+              <button 
+                onClick={() => setViewingImage(null)} 
+                className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300"
+              >
+                &times;
+              </button>
+              <img 
+                src={viewingImage} 
+                alt="Full image" 
+                className="max-w-full max-h-full object-contain" 
+              />
+            </div>
+          )}
+
+          <div className={`transition-all duration-300 ${isAsideOpen ? 'md:mr-48' : ''} mr-0`}>
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Thumb 1 Section */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold flex items-center gap-2">
+                  <FingerprintIcon className="w-5 h-5 text-primary" />
+                  Right Thumb
+                </h3>
+                <div className="flex flex-col items-center space-y-4">
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="relative"
+                  >
+                    <div className="w-40 h-40 bg-gradient-to-br from-accent to-muted rounded-full flex items-center justify-center border-4 border-primary/20 relative overflow-hidden">
+                      {state.data.thumbprint1 ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ duration: 0.5 }}
+                          className="text-center"
+                        >
+                          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                          <p className="font-semibold text-green-600 text-sm">Captured</p>
+                        </motion.div>
+                      ) : isScanningThumb1 ? (
+                        <div className="text-center">
+                          <motion.div
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 1, repeat: Infinity }}
+                          >
+                            <FingerprintIcon className="w-12 h-12 text-primary mb-2" />
+                          </motion.div>
+                          <p className="font-semibold text-primary text-sm">Scanning...</p>
+                          <p className="text-xs text-muted-foreground">{scanProgressThumb1}%</p>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <FingerprintIcon className="w-12 h-12 text-muted-foreground mb-2 mx-auto" />
+                          {/* <p className="font-semibold text-sm">Place thumb here</p> */}
+                        </div>
+                      )}
+
+                      {/* Scanning animation overlay */}
+                      {isScanningThumb1 && (
+                        <motion.div
+                          className="absolute inset-0 bg-primary/10"
+                          initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+                          animate={{ clipPath: `circle(${scanProgressThumb1 / 2}% at 50% 50%)` }}
+                          transition={{ duration: 0.1 }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Pulsing rings when scanning */}
+                    {isScanningThumb1 && (
+                      <>
+                        <motion.div
+                          className="absolute inset-0 rounded-full border-2 border-primary/30"
+                          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                        <motion.div
+                          className="absolute inset-0 rounded-full border-2 border-primary/20"
+                          animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
+                          transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                        />
+                      </>
+                    )}
+                  </motion.div>
+
+                  {!state.data.thumbprint1 && (
+                    <Button
+                      onClick={handleStartScanThumb1}
+                      disabled={isScanningThumb1}
+                      className="rounded-full px-6 py-2 gradient-primary"
+                    >
+                      <FingerprintIcon className="w-4 h-4 mr-2 mx-auto" />
+                      {isScanningThumb1 ? 'Scanning...' : 'Scan Right Thumb'}
+                    </Button>
+                  )}
+
+                  {state.data.thumbprint1 && (
+                    <button
+                      onClick={handleClearThumbprint1}
+                      className="w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Thumb 2 Section */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold flex items-center gap-2">
+                  <FingerprintIcon className="w-5 h-5 text-primary" />
+                  Left Thumb
+                </h3>
+                <div className="flex flex-col items-center space-y-4">
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="relative"
+                  >
+                    <div className="w-40 h-40 bg-gradient-to-br from-accent to-muted rounded-full flex items-center justify-center border-4 border-primary/20 relative overflow-hidden">
+                      {state.data.thumbprint2 ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ duration: 0.5 }}
+                          className="text-center"
+                        >
+                          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                          <p className="font-semibold text-green-600 text-sm">Captured</p>
+                        </motion.div>
+                      ) : isScanningThumb2 ? (
+                        <div className="text-center">
+                          <motion.div
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 1, repeat: Infinity }}
+                          >
+                            <FingerprintIcon className="w-12 h-12 text-primary mb-2 mx-auto" />
+                          </motion.div>
+                          <p className="font-semibold text-primary text-sm">Scanning...</p>
+                          <p className="text-xs text-muted-foreground">{scanProgressThumb2}%</p>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <FingerprintIcon className="w-12 h-20 text-muted-foreground mb-2 mx-auto" />
+                          {/* <p className="font-semibold text-sm">Place thumb here</p> */}
+                        </div>
+                      )}
+
+                      {/* Scanning animation overlay */}
+                      {isScanningThumb2 && (
+                        <motion.div
+                          className="absolute inset-0 bg-primary/10"
+                          initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+                          animate={{ clipPath: `circle(${scanProgressThumb2 / 2}% at 50% 50%)` }}
+                          transition={{ duration: 0.1 }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Pulsing rings when scanning */}
+                    {isScanningThumb2 && (
+                      <>
+                        <motion.div
+                          className="absolute inset-0 rounded-full border-2 border-primary/30"
+                          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                        <motion.div
+                          className="absolute inset-0 rounded-full border-2 border-primary/20"
+                          animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
+                          transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                        />
+                      </>
+                    )}
+                  </motion.div>
+
+                  {!state.data.thumbprint2 && (
+                    <Button
+                      onClick={handleStartScanThumb2}
+                      disabled={isScanningThumb2}
+                      className="rounded-full px-6 py-2 gradient-primary"
+                    >
+                      <FingerprintIcon className="w-4 h-4 mr-2" />
+                      {isScanningThumb2 ? 'Scanning...' : 'Scan Left Thumb'}
+                    </Button>
+                  )}
+
+                  {state.data.thumbprint2 && (
+                    <button
+                      onClick={handleClearThumbprint2}
+                      className="w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Biometric Security Link */}
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => setShowBiometricModal(true)}
+                className="flex items-center gap-2 text-primary hover:underline cursor-pointer justify-center"
+              >
+                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-primary"></div>
+                </div>
+                <span className="font-medium">Biometric Security</span>
+              </button>
+            </div>
+
+            {/* Navigation and Submit Button */}
+            <div className="flex items-center justify-between mt-8">
+              {/* Back Button */}
+              <Button
+                onClick={handleBack}
+                variant="outline"
+                className="rounded-full px-6 py-2"
+              >
+                Back
+              </Button>
+
+              {/* Continue Button (Centered) */}
+              {canContinue && (
+                <Button
+                  onClick={handleNext}
+                  className="rounded-full px-8 py-3 gradient-primary shadow-button"
+                >
+                  Continue to Review
+                </Button>
+              )}
+
+              {/* Step Indicator */}
+              <div className="text-sm text-muted-foreground">
+                Step 3 of 4
+              </div>
             </div>
           </div>
         </motion.div>

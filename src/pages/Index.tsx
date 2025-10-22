@@ -12,13 +12,13 @@ const Index = () => {
   const { state } = useBiometric();
   const params = useParams();
 
-  const relationId = params?.dataUrl ? params.dataUrl.split("-").at(1): undefined;
+  const relationId = params?.payload ? params.payload.split("-").at(1): undefined;
   
   const getCompletedSteps = () => {
     const completed = [];
     if (state.submissions.photoSignature) completed.push(1);
     if (state.submissions.identification) completed.push(2);
-    if (state.submissions.fingerprint) completed.push(3);
+    if (state.submissions.thumbprints) completed.push(3);
     if (state.isCompleted) completed.push(4);
     return completed;
   };
@@ -72,3 +72,6 @@ const Index = () => {
 };
 
 export default Index;
+
+
+// STOP

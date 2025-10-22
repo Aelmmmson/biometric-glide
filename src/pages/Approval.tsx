@@ -14,7 +14,8 @@ import {
   approveCustomerImages,
   rejectCustomerImages,
   getApprovalParams,
-  SearchImagesResponse
+  SearchImagesResponse,
+  DocumentData
 } from '@/services/api';
 import {
   Camera,
@@ -129,9 +130,12 @@ const Approval = () => {
 
     if (!searchResults?.data?.unapproved) return;
 
-    const imageTypes = Object.keys(searchResults.data.unapproved).filter(
-      key => searchResults.data.unapproved[key] && searchResults.data.unapproved[key].trim() !== ''
+    const unapproved = searchResults.data.unapproved;
+    const nonDocTypes = ['photo', 'accsign', 'thumbprint1', 'thumbprint2'].filter(
+      key => unapproved[key] && unapproved[key].trim() !== ''
     );
+    const docTypes = unapproved.documents?.map((d: DocumentData) => d.type) ?? [];
+    const imageTypes = [...nonDocTypes, ...docTypes];
 
     if (imageTypes.length === 0) return;
 
@@ -183,9 +187,12 @@ const Approval = () => {
 
     if (!searchResults?.data?.unapproved) return;
 
-    const imageTypes = Object.keys(searchResults.data.unapproved).filter(
-      key => searchResults.data.unapproved[key] && searchResults.data.unapproved[key].trim() !== ''
+    const unapproved = searchResults.data.unapproved;
+    const nonDocTypes = ['photo', 'accsign', 'thumbprint1', 'thumbprint2'].filter(
+      key => unapproved[key] && unapproved[key].trim() !== ''
     );
+    const docTypes = unapproved.documents?.map((d: DocumentData) => d.type) ?? [];
+    const imageTypes = [...nonDocTypes, ...docTypes];
 
     if (imageTypes.length === 0) return;
 
@@ -280,21 +287,20 @@ const Approval = () => {
     </Card>
   );
 
-  // Get all image configs
+  // Get all image configs for non-document images
   const getAllImageConfigs = (data: NonNullable<SearchImagesResponse['data']>): StepImageConfig[] => {
     const configs: StepImageConfig[] = [
       { key: 'photo', title: 'Photo', icon: Camera },
       { key: 'accsign', title: 'Signature', icon: PenTool },
-      { key: 'id_front', title: 'ID Document (Front)', icon: FileText },
-      { key: 'id_back', title: 'ID Document (Back)', icon: FileText },
-      { key: 'fingerprint', title: 'Fingerprint', icon: Fingerprint }
+      { key: 'thumbprint1', title: 'Right Thumbprint', icon: Fingerprint },
+      { key: 'thumbprint2', title: 'Left Thumbprint', icon: Fingerprint }
     ];
 
     return configs;
   };
 
-  // Render unapproved images only
-  const renderUnapprovedImages = () => {
+  // Render non-document unapproved images
+  const renderNonDocUnapprovedImages = () => {
     if (!searchResults?.data) return null;
 
     const allConfigs = getAllImageConfigs(searchResults.data);
@@ -305,11 +311,10 @@ const Approval = () => {
 
     if (unapprovedConfigs.length === 0) return null;
 
-    // Use 4 columns if exactly 4 cards (e.g., id_back is empty), else 5
-    const gridCols = unapprovedConfigs.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-5';
+    const gridCols = 'lg:grid-cols-4';
 
     return (
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4 mb-6`}>
         {unapprovedConfigs.map((config) => (
           <ImageCard
             key={config.key}
@@ -323,38 +328,85 @@ const Approval = () => {
     );
   };
 
-  // Render approved images for the approved section
-  const renderApprovedImages = () => {
+  // Render document unapproved images
+  const renderDocUnapprovedImages = () => {
+    if (!searchResults?.data?.unapproved?.documents || searchResults.data.unapproved.documents.length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        {searchResults.data.unapproved.documents.map((doc: DocumentData) => {
+          const hasFront = !!doc.sides.front && doc.sides.front.trim() !== '';
+          const hasBack = !!doc.sides.back && doc.sides.back.trim() !== '';
+          if (!hasFront && !hasBack) return null;
+
+          return (
+            <Card key={doc.type} className="border-orange-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <FileText className="w-4 h-4" />
+                  {doc.type.replace('_', ' ').toUpperCase()}
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                    Pending
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`grid ${hasBack ? 'md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                  {hasFront && (
+                    <ImageCard
+                      title={`${doc.type.replace('_', ' ')} (Front)`}
+                      icon={FileText}
+                      image={doc.sides.front}
+                      type="unapproved"
+                    />
+                  )}
+                  {hasBack && (
+                    <ImageCard
+                      title={`${doc.type.replace('_', ' ')} (Back)`}
+                      icon={FileText}
+                      image={doc.sides.back}
+                      type="unapproved"
+                    />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Render unapproved images only
+  const renderUnapprovedImages = () => {
+    const nonDoc = renderNonDocUnapprovedImages();
+    const docs = renderDocUnapprovedImages();
+
+    if (!nonDoc && !docs) return null;
+
+    return (
+      <>
+        {nonDoc}
+        {docs}
+      </>
+    );
+  };
+
+  // Render non-document approved images
+  const renderNonDocApprovedImages = () => {
     if (!searchResults?.data?.approved) return null;
 
     const { approved } = searchResults.data;
-    const allEmpty = ![
-      approved.photo,
-      approved.accsign,
-      approved.fingerprint,
-      approved.id_front,
-      approved.id_back
-    ].some(img => img && img.trim() !== '');
+    const configsToRender = getAllImageConfigs(searchResults.data).filter(config => 
+      approved[config.key] && approved[config.key].trim() !== ''
+    );
 
-    let configsToRender: StepImageConfig[];
-    let validImageCount: number;
+    if (configsToRender.length === 0) return null;
 
-    if (allEmpty) {
-      // When all fields are empty, show all cards
-      configsToRender = getAllImageConfigs(searchResults.data);
-      validImageCount = configsToRender.length; // 5
-    } else {
-      // When at least one field has data, only show cards with valid data
-      configsToRender = getAllImageConfigs(searchResults.data).filter(config => 
-        approved[config.key] && approved[config.key].trim() !== ''
-      );
-      validImageCount = configsToRender.length;
-    }
-
-    const gridCols = validImageCount <= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-5';
+    const gridCols = 'lg:grid-cols-4';
 
     return (
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4 mb-6`}>
         {configsToRender.map(config => (
           <ImageCard
             key={config.key}
@@ -368,13 +420,83 @@ const Approval = () => {
     );
   };
 
+  // Render document approved images
+  const renderDocApprovedImages = () => {
+    if (!searchResults?.data?.approved?.documents || searchResults.data.approved.documents.length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        {searchResults.data.approved.documents.map((doc: DocumentData) => {
+          const hasFront = !!doc.sides.front && doc.sides.front.trim() !== '';
+          const hasBack = !!doc.sides.back && doc.sides.back.trim() !== '';
+          if (!hasFront && !hasBack) return null;
+
+          return (
+            <Card key={doc.type} className="border-green-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <FileText className="w-4 h-4" />
+                  {doc.type.replace('_', ' ').toUpperCase()}
+                  <Badge variant="default" className="bg-green-100 text-green-800">
+                    Approved
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`grid ${hasBack ? 'md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                  {hasFront && (
+                    <ImageCard
+                      title={`${doc.type.replace('_', ' ')} (Front)`}
+                      icon={FileText}
+                      image={doc.sides.front}
+                      type="approved"
+                    />
+                  )}
+                  {hasBack && (
+                    <ImageCard
+                      title={`${doc.type.replace('_', ' ')} (Back)`}
+                      icon={FileText}
+                      image={doc.sides.back}
+                      type="approved"
+                    />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Render approved images for the approved section
+  const renderApprovedImages = () => {
+    const nonDoc = renderNonDocApprovedImages();
+    const docs = renderDocApprovedImages();
+
+    if (!nonDoc && !docs) return null;
+
+    return (
+      <>
+        {nonDoc}
+        {docs}
+      </>
+    );
+  };
+
   // Determine action buttons
   const renderActionButtons = () => {
-    if (!searchResults?.data) return null;
+    if (!searchResults?.data?.unapproved) return null;
 
-    const allUnapprovedEmpty = !Object.values(searchResults.data.unapproved).some(
-      img => img && img.trim() !== ''
+    const unapproved = searchResults.data.unapproved;
+    const hasNonDoc = ['photo', 'accsign', 'thumbprint1', 'thumbprint2'].some(
+      key => unapproved[key] && unapproved[key].trim() !== ''
     );
+    const hasDocs = unapproved.documents?.some((d: DocumentData) => 
+      d.sides.front?.trim() !== '' || d.sides.back?.trim() !== ''
+    ) ?? false;
+
+    const allUnapprovedEmpty = !hasNonDoc && !hasDocs;
 
     if (allUnapprovedEmpty) return null;
 
@@ -441,46 +563,39 @@ const Approval = () => {
             </p>
           </motion.div>
 
-          {/* Search Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="w-5 h-5" />
-                  Search Customer Images
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-3">
-                  <Input
-                    placeholder="Enter relation number..."
-                    value={searchRelationNo}
-                    onChange={(e) => setSearchRelationNo(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                  <Button
-                    onClick={() => handleSearch()}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Searching...' : 'Search'}
-                  </Button>
-                </div>
-
-                {approvalParams.relationno && (
-                  <Alert className="mt-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Auto-loaded relation number: <strong>{approvalParams.relationno}</strong>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+          {/* Search Section - Only show when no relation number available */}
+          {!approvalParams.relationno && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Search className="w-5 h-5" />
+                    Search Customer Images
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-3">
+                    <Input
+                      placeholder="Enter relation number..."
+                      value={searchRelationNo}
+                      onChange={(e) => setSearchRelationNo(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                    <Button
+                      onClick={() => handleSearch()}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Searching...' : 'Search'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Results Section */}
           {searchResults && (
@@ -492,32 +607,46 @@ const Approval = () => {
             >
               {searchResults.data && (
                 <>
-                  {Object.keys(searchResults.data.unapproved).length === 0 ? (
-                    <Card>
-                      <CardContent className="text-center py-8">
-                        <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-green-600 mb-2">All Steps Completed</h3>
-                        <p className="text-gray-500">
-                          All biometric data has been reviewed.
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="flex items-center gap-2 text-orange-700">
-                            <AlertCircle className="w-5 h-5" />
-                            Review Unapproved Images
-                          </CardTitle>
-                          {renderActionButtons()}
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        {renderUnapprovedImages()}
-                      </CardContent>
-                    </Card>
-                  )}
+                  {(() => {
+                    const unapproved = searchResults.data.unapproved;
+                    const hasNonDoc = ['photo', 'accsign', 'thumbprint1', 'thumbprint2'].some(
+                      key => unapproved[key] && unapproved[key].trim() !== ''
+                    );
+                    const hasDocs = unapproved.documents?.some((d: DocumentData) => 
+                      d.sides.front?.trim() !== '' || d.sides.back?.trim() !== ''
+                    ) ?? false;
+                    const allUnapprovedEmpty = !hasNonDoc && !hasDocs;
+                    if (allUnapprovedEmpty) {
+                      return (
+                        <Card>
+                          <CardContent className="text-center py-8">
+                            <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-green-600 mb-2">All Steps Completed</h3>
+                            <p className="text-gray-500">
+                              All biometric data has been reviewed.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      );
+                    } else {
+                      return (
+                        <Card>
+                          <CardHeader>
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="flex items-center gap-2 text-orange-700">
+                                <AlertCircle className="w-5 h-5" />
+                                Review Unapproved Images
+                              </CardTitle>
+                              {renderActionButtons()}
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {renderUnapprovedImages()}
+                          </CardContent>
+                        </Card>
+                      );
+                    }
+                  })()}
                 </>
               )}
 

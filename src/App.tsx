@@ -9,6 +9,7 @@ import Approval from "./pages/Approval";
 import Update from "./pages/Update";
 import Enquiry from "./pages/Enquiry";
 import NotFound from "./pages/NotFound";
+import Gateway from "./pages/Gateway";
 
 const queryClient = new QueryClient();
 
@@ -21,15 +22,15 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Capture phase routes */}
-            <Route path="/capture-:relationId" element={<Index />} />
+            <Route path="/:data?" element={<Gateway />} />
             {/* Approval phase route */}
             <Route path="/approve" element={<Approval />} />
             {/* Update phase route */}
-            <Route path="/update" element={<Update />} />
+            {/* <Route path="/update/" element={<Update />} /> */}
             {/* Enquiry phase route */}
-            <Route path="/viewimage-:customerId" element={<Enquiry />} />
+            {/* <Route path="/viewimage-:customerId" element={<Enquiry />} /> */}
             {/* Default route */}
-            <Route path="/" element={<Index />} />
+            {/* <Route path="/" element={<Index />} /> */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -40,3 +41,6 @@ const App = () => (
 );
 
 export default App;
+
+
+// STOP

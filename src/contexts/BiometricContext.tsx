@@ -6,7 +6,8 @@ interface BiometricData {
   idType: 'passport' | 'national-id' | 'voter-id' | 'drivers-license' | null;
   idFront: string | null;
   idBack: string | null;
-  fingerprint: string | null;
+  thumbprint1: string | null; // Right thumb
+  thumbprint2: string | null; // Left thumb
 }
 
 interface BiometricState {
@@ -15,7 +16,7 @@ interface BiometricState {
   submissions: {
     photoSignature: boolean;
     identification: boolean;
-    fingerprint: boolean;
+    thumbprints: boolean; // Updated from 'fingerprint' to 'thumbprints'
   };
   isCompleted: boolean;
 }
@@ -24,13 +25,14 @@ type BiometricAction =
   | { type: 'SET_STEP'; step: number }
   | { type: 'SET_PHOTO'; photo: string | null }
   | { type: 'SET_SIGNATURE'; signature: string | null }
-  | { type: 'SET_ID_TYPE'; idType: 'passport' | 'national-id' | 'voter-id' | 'drivers-license' }
+  | { type: 'SET_ID_TYPE'; idType: 'passport' | 'national-id' | 'voter-id' | 'drivers-license' | null }
   | { type: 'SET_ID_FRONT'; idFront: string | null }
   | { type: 'SET_ID_BACK'; idBack: string | null }
-  | { type: 'SET_FINGERPRINT'; fingerprint: string | null }
+  | { type: 'SET_THUMBPRINT1'; thumbprint1: string | null }
+  | { type: 'SET_THUMBPRINT2'; thumbprint2: string | null }
   | { type: 'SUBMIT_PHOTO_SIGNATURE' }
   | { type: 'SUBMIT_IDENTIFICATION' }
-  | { type: 'SUBMIT_FINGERPRINT' }
+  | { type: 'SUBMIT_THUMBPRINTS' } // Updated from 'SUBMIT_FINGERPRINT'
   | { type: 'COMPLETE_PROCESS' }
   | { type: 'RESET' };
 
@@ -42,12 +44,13 @@ const initialState: BiometricState = {
     idType: null,
     idFront: null,
     idBack: null,
-    fingerprint: null,
+    thumbprint1: null,
+    thumbprint2: null,
   },
   submissions: {
     photoSignature: false,
     identification: false,
-    fingerprint: false,
+    thumbprints: false, // Updated from 'fingerprint'
   },
   isCompleted: false,
 };
@@ -61,19 +64,29 @@ function biometricReducer(state: BiometricState, action: BiometricAction): Biome
     case 'SET_SIGNATURE':
       return { ...state, data: { ...state.data, signature: action.signature } };
     case 'SET_ID_TYPE':
-      return { ...state, data: { ...state.data, idType: action.idType, idFront: null, idBack: null } };
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          idType: action.idType, 
+          idFront: null, 
+          idBack: null 
+        } 
+      };
     case 'SET_ID_FRONT':
       return { ...state, data: { ...state.data, idFront: action.idFront } };
     case 'SET_ID_BACK':
       return { ...state, data: { ...state.data, idBack: action.idBack } };
-    case 'SET_FINGERPRINT':
-      return { ...state, data: { ...state.data, fingerprint: action.fingerprint } };
+    case 'SET_THUMBPRINT1':
+      return { ...state, data: { ...state.data, thumbprint1: action.thumbprint1 } };
+    case 'SET_THUMBPRINT2':
+      return { ...state, data: { ...state.data, thumbprint2: action.thumbprint2 } };
     case 'SUBMIT_PHOTO_SIGNATURE':
       return { ...state, submissions: { ...state.submissions, photoSignature: true } };
     case 'SUBMIT_IDENTIFICATION':
       return { ...state, submissions: { ...state.submissions, identification: true } };
-    case 'SUBMIT_FINGERPRINT':
-      return { ...state, submissions: { ...state.submissions, fingerprint: true } };
+    case 'SUBMIT_THUMBPRINTS':
+      return { ...state, submissions: { ...state.submissions, thumbprints: true } };
     case 'COMPLETE_PROCESS':
       return { ...state, isCompleted: true };
     case 'RESET':

@@ -31,16 +31,29 @@ const steps = [
 interface ProgressSidebarProps {
   currentStep: number;
   completedSteps: number[];
+  mode?: 'capture' | 'update';
+  relationNo?: string | null;
 }
 
-export function ProgressSidebar({ currentStep, completedSteps }: ProgressSidebarProps) {
+export function ProgressSidebar({ currentStep, completedSteps, mode = 'capture', relationNo }: ProgressSidebarProps) {
+  const isUpdateMode = mode === 'update';
+  const headerTitle = isUpdateMode ? 'Update Bio Data' : 'Biometric Capture';
+  const headerDescription = isUpdateMode 
+    ? 'Update all steps to refresh your identity.' 
+    : 'Complete all steps to verify your identity.';
+
   return (
     <div className="bg-sidebar text-sidebar-foreground p-8 rounded-2xl shadow-card h-fit sticky top-8">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-2">Biometric Capture</h2>
-        <p className="text-sidebar-foreground/70">
-          Complete all steps to verify your identity.
+        <h2 className="text-2xl font-bold mb-2">{headerTitle}</h2>
+        <p className="text-sidebar-foreground/70 text-sm">
+          {headerDescription}
         </p>
+        {/* {isUpdateMode && relationNo && (
+          <p className="text-sm text-sidebar-primary mt-2">
+            Relation No: {relationNo}
+          </p>
+        )} */}
       </div>
 
       <div className="space-y-6">
@@ -98,7 +111,12 @@ export function ProgressSidebar({ currentStep, completedSteps }: ProgressSidebar
         })}
       </div>
 
-      <div className="mt-20 pt-10 border-t border-sidebar-border">
+      <div className="mt-20 pt-5 border-t border-sidebar-border">
+        {isUpdateMode && relationNo && (
+          <p className="text-sm text-sidebar-primary">
+            Relation No: {relationNo}
+          </p>
+        )}
         <p className="text-sm text-sidebar-foreground/60">
           Your data is encrypted and secure.
         </p>

@@ -16,6 +16,14 @@ export interface FingerprintResponse {
   image?: string;
 }
 
+export interface DocumentData {
+  type: 'national_id' | 'passport' | 'voter_id' | 'drivers_license' | string;
+  sides: {
+    front?: string;
+    back?: string;
+  };
+}
+
 export interface SearchImagesResponse {
   status: 'success' | 'error' | 'not_found';
   message: string;
@@ -23,16 +31,16 @@ export interface SearchImagesResponse {
     approved?: {
       photo?: string;
       accsign?: string;
-      id_front?: string;
-      id_back?: string;
-      fingerprint?: string;
+      documents?: DocumentData[];
+      thumbprint1?: string; // Right thumb
+      thumbprint2?: string; // Left thumb
     };
     unapproved?: {
       photo?: string;
       accsign?: string;
-      id_front?: string;
-      id_back?: string;
-      fingerprint?: string;
+      documents?: DocumentData[];
+      thumbprint1?: string;
+      thumbprint2?: string;
     };
   };
 }
@@ -43,8 +51,7 @@ export interface EnquiryImagesResponse {
   data?: Array<{
     photo?: string;
     accsign?: string;
-    id_front?: string;
-    id_back?: string;
+    documents?: DocumentData[];
     fingerprint?: string;
   }>;
 }
@@ -55,17 +62,11 @@ export interface ApprovalResponse {
   code?: number;
 }
 
-// Extract relation number from URL path like /capture-111
+// Updated function to extract relation number from URL path for both capture and update modes
 export const getRelationNumber = (): string => {
   const path = window.location.pathname;
-  const match = path.match(/\/capture-(\d+)/);
-  return match ? match[1] : '000001'; // Default fallback
-};
-
-// Extract relation number from URL query params like /update?relationno=232
-export const getUpdateRelationNumber = (): string => {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('relationno') || '000001'; // Default fallback
+  const match = path.match(/\/(capture|update)-(\d+)/);
+  return match ? match[2] : '000001'; // Default fallback
 };
 
 // Extract customer ID from URL path like /viewimage-232
@@ -162,28 +163,34 @@ export const captureBrowse = async (
 
 // Capture identification details
 export const captureIdentification = async (
-  idFrontImage: string,
-  idBackImage?: string,
+  documents: DocumentData[],
   cus_no?: string
 ): Promise<CaptureResponse> => {
   try {
     const relationNumber = cus_no || getRelationNumber();
-    const idFrontBase64 = getBase64String(idFrontImage);
-    const idBackBase64 = idBackImage ? getBase64String(idBackImage) : '';
 
-    const payload = {
-      id_front_image: idFrontBase64,
-      id_back_image: idBackBase64,
-    };
-
-    const response = await fetch(`http://10.203.14.169/imaging/capture_id_details-${relationNumber}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
+    // Convert any base64 strings with data URL prefix to plain base64
+    const processedDocuments = documents.map(doc => ({
+      type: doc.type,
+      sides: {
+        front: doc.sides.front ? getBase64String(doc.sides.front) : undefined,
+        back: doc.sides.back ? getBase64String(doc.sides.back) : undefined,
       },
-      body: JSON.stringify(payload),
-    });
+    }));
+
+    const payload = { documents: processedDocuments };
+
+    const response = await fetch(
+      `http://10.203.14.169/imaging/capture_id_details-${relationNumber}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      }
+    );
 
     const contentType = response.headers.get('Content-Type');
     const responseText = await response.text();
@@ -193,21 +200,19 @@ export const captureIdentification = async (
       throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
     }
 
+    if (responseText.trim() === 'Array ()') {
+      return {
+        success: true,
+        message: 'No data returned from server (empty array)',
+      };
+    }
+
     let jsonResponse: IdCaptureResponse;
     try {
-      if (responseText.trim() === 'Array ()') {
-        console.warn('Received empty PHP array response, treating as empty JSON array');
-        return {
-          success: true,
-          message: 'No data returned from server (empty array)'
-        };
-      }
-
       const jsonStart = responseText.lastIndexOf('{');
       const jsonEnd = responseText.lastIndexOf('}') + 1;
       if (jsonStart !== -1 && jsonEnd !== -1 && jsonStart < jsonEnd) {
-        const jsonString = responseText.substring(jsonStart, jsonEnd);
-        jsonResponse = JSON.parse(jsonString);
+        jsonResponse = JSON.parse(responseText.substring(jsonStart, jsonEnd));
       } else {
         throw new Error('No valid JSON found in response');
       }
@@ -219,19 +224,22 @@ export const captureIdentification = async (
     if (jsonResponse.status === 'error') {
       return {
         success: false,
-        message: jsonResponse.message || 'Failed to process identification'
+        message: jsonResponse.message || 'Failed to process identification',
       };
     }
 
     return {
       success: true,
-      message: jsonResponse.message || 'Identification processed successfully'
+      message: jsonResponse.message || 'Identification processed successfully',
     };
   } catch (error) {
     console.error('Error in captureIdentification:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to capture identification'
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Failed to capture identification',
     };
   }
 };
@@ -242,7 +250,7 @@ export const saveData = async (data: {
   signatureData: string;
   cus_no?: string;
   batchNumber: string;
-  action?: 'add' | 'ammend';
+  action?: 'add' | 'AMEND';
 }): Promise<CaptureResponse> => {
   try {
     const relationNumber = data.cus_no || getRelationNumber();
@@ -296,7 +304,7 @@ export const updateData = async (data: {
 }): Promise<CaptureResponse> => {
   return saveData({
     ...data,
-    action: 'ammend'
+    action: 'AMEND'
   });
 };
 
@@ -325,12 +333,14 @@ export const initFingerprint = async (): Promise<CaptureResponse> => {
 };
 
 // Capture fingerprint
-export const captureFingerprint = async (relationNumber?: string): Promise<FingerprintResponse> => {
+// Capture thumbprint for specific thumb (1 or 2)
+export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: string): Promise<FingerprintResponse> => {
   try {
     const relationNo = relationNumber || getRelationNumber();
     
     const formData = new FormData();
     formData.append('relation_no', relationNo);
+    formData.append('thumbprint', thumb);  // Payload: '1' for thumbprint 1 (right), '2' for thumbprint 2 (left)
 
     const response = await fetch('http://192.168.1.156:8080/capture', {
       method: 'POST',
@@ -344,10 +354,10 @@ export const captureFingerprint = async (relationNumber?: string): Promise<Finge
     const result = await response.json();
     return result;
   } catch (error) {
-    console.error('Error capturing fingerprint:', error);
+    console.error('Error capturing thumbprint:', error);
     return {
       response_code: -1,
-      response_msg: error instanceof Error ? error.message : 'Failed to capture fingerprint'
+      response_msg: error instanceof Error ? error.message : 'Failed to capture thumbprint'
     };
   }
 };
