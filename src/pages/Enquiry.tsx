@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, Image as ImageIcon, FileText, ArrowUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -23,23 +23,7 @@ const Enquiry = () => {
   
   const customerId = getCustomerId();
 
-  useEffect(() => {
-    fetchImages();
-  }, [customerId]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 300);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const fetchImages = async () => {
+  const fetchImages = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -75,6 +59,22 @@ const Enquiry = () => {
     } finally {
       setLoading(false);
     }
+  }, [customerId]);
+
+  useEffect(() => {
+    fetchImages();
+  }, [fetchImages]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getImageUrl = (imageData: string | undefined): string | undefined => {
@@ -158,7 +158,7 @@ const Enquiry = () => {
         >
           <h1 className="text-3xl font-bold mb-2">Customer Account Biometric</h1>
           <div className="flex items-center justify-center gap-2 mb-2">
-            <p className="text-muted-foreground">Customer Account ID:</p>
+            <p className="text-muted-foreground">Customer ID:</p>
             <Badge variant="secondary" className="text-base">{customerId}</Badge>
           </div>
           {imageData && (
