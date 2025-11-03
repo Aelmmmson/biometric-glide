@@ -24,6 +24,20 @@ export interface DocumentData {
   };
 }
 
+export interface EnqDetail {
+  relation_no: string;
+  pix?: string;
+  signature?: string;
+  fingerprint_one?: string;
+  fingerprint_two?: string;
+  docs: DocumentData[];
+}
+
+export interface EnquiryData {
+  account_mandate: string;
+  enq_details: EnqDetail[];
+}
+
 export interface SearchImagesResponse {
   status: 'success' | 'error' | 'not_found';
   message: string;
@@ -48,12 +62,7 @@ export interface SearchImagesResponse {
 export interface EnquiryImagesResponse {
   status: 'success' | 'error' | 'not_found';
   message: string;
-  data?: Array<{
-    photo?: string;
-    accsign?: string;
-    documents?: DocumentData[];
-    fingerprint?: string;
-  }>;
+  data?: EnquiryData;
 }
 
 export interface ApprovalResponse {
@@ -421,7 +430,7 @@ export const enquiryImages = async (customerId: string): Promise<EnquiryImagesRe
     return {
       status: 'success',
       message: 'Images retrieved successfully',
-      data: Array.isArray(result) ? result : [result]
+      data: result
     };
   } catch (error) {
     console.error('Error in enquiryImages:', error);

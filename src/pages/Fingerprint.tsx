@@ -63,7 +63,7 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
       }
 
       setScanProgressThumb1(25);
-      toast({ title: "Device initialized. Please place right thumb on scanner." });
+      toast({ title: "Device initialized. Please place primary finger on scanner." });
 
       // Step 2: Capture fingerprint for thumb 1
       await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause for user
@@ -84,13 +84,13 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
         throw new Error(captureResult.response_msg || 'Failed to capture right thumb');
       }
     } catch (error) {
-      console.error('Right thumb capture error:', error);
+      console.error('Primary finger capture error:', error);
       setIsScanningThumb1(false);
       setScanProgressThumb1(0);
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({ 
-        title: "Right thumb capture failed", 
+        title: "Primary Finger capture failed", 
         description: errorMessage,
         variant: "destructive" 
       });
@@ -113,7 +113,7 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
       }
 
       setScanProgressThumb2(25);
-      toast({ title: "Device initialized. Please place left thumb on scanner." });
+      toast({ title: "Device initialized. Please place secondary fingerprint on scanner." });
 
       // Step 2: Capture fingerprint for thumb 2
       await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause for user
@@ -128,19 +128,19 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
         const fingerprintData = `data:image/jpeg;base64,${captureResult.image}`;
         dispatch({ type: 'SET_THUMBPRINT2', thumbprint2: fingerprintData });
         
-        toast({ title: "Left thumb captured and saved to database successfully!" });
+        toast({ title: "Secondary fingerprint captured and saved to database successfully!" });
         setIsScanningThumb2(false);
       } else {
-        throw new Error(captureResult.response_msg || 'Failed to capture left thumb');
+        throw new Error(captureResult.response_msg || 'Failed to capture secondary fingerprint');
       }
     } catch (error) {
-      console.error('Left thumb capture error:', error);
+      console.error('Secondary fingerprint capture error:', error);
       setIsScanningThumb2(false);
       setScanProgressThumb2(0);
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({ 
-        title: "Left thumb capture failed", 
+        title: "Secondary fingerprint capture failed", 
         description: errorMessage,
         variant: "destructive" 
       });
@@ -191,7 +191,7 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
             )}
           </div>
           <p className="text-muted-foreground mb-6">
-            {mode === 'update' ? 'Update your thumbprints.' : 'Place your thumbs on the scanner.'}
+            {mode === 'update' ? 'Update your fingerprints.' : 'Place your finger on the scanner.'}
           </p>
 
           {mode === 'update' && isAsideOpen && images && (
@@ -222,11 +222,11 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
                     <div className="grid grid-cols-2 gap-2">
                       {images.data.unapproved?.thumbprint1 && getImageSrc(images.data.unapproved.thumbprint1) && (
                         <div className="space-y-1 relative">
-                          <span className="text-xs font-medium text-muted-foreground">Thumbprint 1</span>
+                          <span className="text-xs font-medium text-muted-foreground">Fingerprint 1</span>
                           <div className="relative group">
                             <img
                               src={getImageSrc(images.data.unapproved.thumbprint1)!}
-                              alt="Unapproved Thumbprint 1"
+                              alt="Unapproved Fingerprint 1"
                               className="w-full aspect-square object-cover rounded border cursor-pointer"
                               onClick={() => setViewingImage(getImageSrc(images.data.unapproved.thumbprint1))}
                             />
@@ -246,11 +246,11 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
                       )}
                       {images.data.unapproved?.thumbprint2 && getImageSrc(images.data.unapproved.thumbprint2) && (
                         <div className="space-y-1 relative">
-                          <span className="text-xs font-medium text-muted-foreground">Thumbprint 2</span>
+                          <span className="text-xs font-medium text-muted-foreground">Fingerprint 2</span>
                           <div className="relative group">
                             <img
                               src={getImageSrc(images.data.unapproved.thumbprint2)!}
-                              alt="Unapproved Thumbprint 2"
+                              alt="Unapproved Fingerprint 2"
                               className="w-full aspect-square object-cover rounded border cursor-pointer"
                               onClick={() => setViewingImage(getImageSrc(images.data.unapproved.thumbprint2))}
                             />
@@ -275,11 +275,11 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
                     <div className="grid grid-cols-2 gap-2">
                       {images.data.approved?.thumbprint1 && getImageSrc(images.data.approved.thumbprint1) && (
                         <div className="space-y-1 relative">
-                          <span className="text-xs font-medium text-muted-foreground">Thumbprint 1</span>
+                          <span className="text-xs font-medium text-muted-foreground">Fingerprint 1</span>
                           <div className="relative group">
                             <img
                               src={getImageSrc(images.data.approved.thumbprint1)!}
-                              alt="Approved Thumbprint 1"
+                              alt="Approved Fingerprint 1"
                               className="w-full aspect-square object-cover rounded border cursor-pointer"
                               onClick={() => setViewingImage(getImageSrc(images.data.approved.thumbprint1))}
                             />
@@ -299,11 +299,11 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
                       )}
                       {images.data.approved?.thumbprint2 && getImageSrc(images.data.approved.thumbprint2) && (
                         <div className="space-y-1 relative">
-                          <span className="text-xs font-medium text-muted-foreground">Thumbprint 2</span>
+                          <span className="text-xs font-medium text-muted-foreground">Fingerprint 2</span>
                           <div className="relative group">
                             <img
                               src={getImageSrc(images.data.approved.thumbprint2)!}
-                              alt="Approved Thumbprint 2"
+                              alt="Approved Fingerprint 2"
                               className="w-full aspect-square object-cover rounded border cursor-pointer"
                               onClick={() => setViewingImage(getImageSrc(images.data.approved.thumbprint2))}
                             />
@@ -353,7 +353,7 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold flex items-center gap-2">
                   <FingerprintIcon className="w-5 h-5 text-primary" />
-                  Right Thumb
+                  Primary Fingerprint
                 </h3>
                 <div className="flex flex-col items-center space-y-4">
                   <motion.div
@@ -426,7 +426,7 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
                       className="rounded-full px-6 py-2 gradient-primary"
                     >
                       <FingerprintIcon className="w-4 h-4 mr-2 mx-auto" />
-                      {isScanningThumb1 ? 'Scanning...' : 'Scan Right Thumb'}
+                      {isScanningThumb1 ? 'Scanning...' : 'Scan Primary Finger'}
                     </Button>
                   )}
 
@@ -445,7 +445,7 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold flex items-center gap-2">
                   <FingerprintIcon className="w-5 h-5 text-primary" />
-                  Left Thumb
+                  Secondary Fingerprint
                 </h3>
                 <div className="flex flex-col items-center space-y-4">
                   <motion.div
@@ -518,7 +518,7 @@ export function Fingerprint({ mode = 'capture' }: FingerprintProps) {
                       className="rounded-full px-6 py-2 gradient-primary"
                     >
                       <FingerprintIcon className="w-4 h-4 mr-2" />
-                      {isScanningThumb2 ? 'Scanning...' : 'Scan Left Thumb'}
+                      {isScanningThumb2 ? 'Scanning...' : 'Scan Secondary Finger'}
                     </Button>
                   )}
 
