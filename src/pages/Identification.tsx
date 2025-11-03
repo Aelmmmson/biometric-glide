@@ -187,17 +187,6 @@ export function Identification({ mode = 'capture' }: IdentificationProps) {
   };
 
   const handleSubmit = async () => {
-    const nationalFront = documents.national_id?.front;
-    const nationalBack = documents.national_id?.back;
-    if (!nationalFront || !nationalBack) {
-      toast({
-        title: 'Required Fields Missing',
-        description: 'Please provide both front and back for National ID.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -235,7 +224,7 @@ export function Identification({ mode = 'capture' }: IdentificationProps) {
     dispatch({ type: 'SET_STEP', step: 1 });
   };
 
-  const canSubmit = !!documents.national_id?.front && !!documents.national_id?.back;
+  const canSubmit = true;
 
   const nationalIdType = idTypes.find((t) => t.id === 'national_id')!;
 
@@ -269,7 +258,7 @@ export function Identification({ mode = 'capture' }: IdentificationProps) {
           )}
         </div>
         <p className="text-muted-foreground mb-6">
-          {mode === 'update' ? 'Update your identification document.' : 'Provide National ID (required) and optionally add more documents.'}
+          {mode === 'update' ? 'Update your identification document.' : 'Provide National ID and optionally add more documents.'}
         </p>
 
         {mode === 'update' && isAsideOpen && images && (
@@ -455,13 +444,13 @@ export function Identification({ mode = 'capture' }: IdentificationProps) {
 
         <div className={`transition-all duration-300 ${isAsideOpen ? 'md:mr-48' : ''} mr-0`}>
           <div className="space-y-8">
-            {/* National ID Section - Required */}
+            {/* National ID Section */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <nationalIdType.icon className="w-6 h-6 text-primary" />
                   <div>
-                    <h3 className="text-lg font-semibold">{nationalIdType.label} (Required)</h3>
+                    <h3 className="text-lg font-semibold">{nationalIdType.label}</h3>
                     <p className="text-sm text-muted-foreground">{nationalIdType.description}</p>
                   </div>
                 </div>
