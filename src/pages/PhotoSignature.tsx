@@ -8,15 +8,12 @@ import { toast } from '@/hooks/use-toast';
 import { listener, startTablet, ClearTablet, LcdRefresh, stopTablet } from './SigWebTablet';
 import { captureBrowse, saveData, updateData, getRelationNumber, searchImages, SearchImagesResponse } from '@/services/api';
 import { ImageEditor } from '@/components/ImageEditor';
-
 interface ExtendedWindow extends Window {
   sigWebInitialized?: boolean;
 }
-
 interface PhotoSignatureProps {
   mode?: 'capture' | 'update';
 }
-
 export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
   const { state, dispatch } = useBiometric();
   const [photoMode, setPhotoMode] = useState<'capture' | 'upload'>('capture');
@@ -30,20 +27,15 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const hasAutoClosed = useRef(false);
-  
+ 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const photoCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Cleanup useEffect for SigWeb (kept separate for unmount)
   useEffect(() => {
-    const extendedWindow = window as unknown as ExtendedWindow;
-    if (!extendedWindow.sigWebInitialized) {
-      listener();
-      extendedWindow.sigWebInitialized = true;
-    }
-
     return () => {
       stopTablet();
     };
@@ -56,7 +48,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       setIsAsideOpen(true);
     }
   }, [mode]);
-
   useEffect(() => {
     if (mode === 'update' && images && isAsideOpen && !hasAutoClosed.current) {
       hasAutoClosed.current = true;
@@ -66,7 +57,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       return () => clearTimeout(timer);
     }
   }, [mode, images, isAsideOpen]);
-
   useEffect(() => {
     return () => {
       if (stream) {
@@ -75,7 +65,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       }
     };
   }, [stream]);
-
   useEffect(() => {
     if (photoMode === 'capture' && !state.data.photo && !stream) {
       startCamera();
@@ -84,7 +73,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       setStream(null);
     }
   }, [photoMode, state.data.photo, stream]);
-
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -104,10 +92,8 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       setPhotoMode('upload');
     }
   };
-
   const capturePhoto = async () => {
     if (!videoRef.current || !photoCanvasRef.current || !stream) return;
-
     const video = videoRef.current;
     const canvas = photoCanvasRef.current;
     canvas.width = video.videoWidth;
@@ -117,7 +103,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       ctx.drawImage(video, 0, 0);
       const base64Data = canvas.toDataURL('image/jpeg', 0.8);
       dispatch({ type: 'SET_PHOTO', photo: base64Data });
-      
+     
       // Immediately save to backend
       const result = await captureBrowse(base64Data, 1);
       if (result.success) {
@@ -125,18 +111,15 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       } else {
         toast({ title: "Photo captured but failed to save", description: result.message, variant: "destructive" });
       }
-
       // Stop the stream after capture
       stream.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
   };
-
   const getImageSrc = (image?: string) => {
     if (!image || image.trim() === '') return undefined;
     return image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`;
   };
-
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -144,7 +127,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       reader.onload = async (e) => {
         const base64Data = e.target?.result as string;
         dispatch({ type: 'SET_PHOTO', photo: base64Data });
-        
+       
         // Immediately save to backend
         const result = await captureBrowse(base64Data, 1);
         if (result.success) {
@@ -156,7 +139,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       reader.readAsDataURL(file);
     }
   };
-
   const handleSignatureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -164,7 +146,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       reader.onload = async (e) => {
         const base64Data = e.target?.result as string;
         dispatch({ type: 'SET_SIGNATURE', signature: base64Data });
-        
+       
         // Immediately save to backend
         const result = await captureBrowse(base64Data, 2);
         if (result.success) {
@@ -176,7 +158,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       reader.readAsDataURL(file);
     }
   };
-
   const handleSigCapture = async (sig: string) => {
     const image = new Image();
     const base64Data = 'data:image/png;base64,' + sig;
@@ -184,7 +165,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
     setSigCaptured({ image, sig });
     dispatch({ type: 'SET_SIGNATURE', signature: base64Data });
     stopTablet(); // Stop polling after capture to reduce load
-    
+   
     // Immediately save to backend
     const result = await captureBrowse(base64Data, 2);
     if (result.success) {
@@ -193,7 +174,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       toast({ title: "Signature captured but failed to save", description: result.message, variant: "destructive" });
     }
   };
-
   const clearSignature = () => {
     setSigCaptured(null);
     dispatch({ type: 'SET_SIGNATURE', signature: null });
@@ -201,11 +181,9 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
     LcdRefresh(0, 0, 0, 240, 64);
     stopTablet(); // Ensure polling is stopped on clear
   };
-
   const handleClearPhoto = () => {
     dispatch({ type: 'SET_PHOTO', photo: null });
   };
-
   const handleDownload = () => {
     if (sigCaptured) {
       const link = document.createElement('a');
@@ -214,12 +192,11 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       link.click();
     }
   };
-
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    
+   
     setIsSubmitting(true);
-    
+   
     try {
       // Use updateData for update mode, saveData for capture mode
       const submitFn = mode === 'update' ? updateData : saveData;
@@ -228,37 +205,59 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
         signatureData: state.data.signature!,
         batchNumber: ''
       });
-      
+     
       if (result.success) {
         dispatch({ type: 'SUBMIT_PHOTO_SIGNATURE' });
         toast({ title: `Photo & Signature ${mode === 'update' ? 'updated' : 'submitted'} successfully!` });
-        
+       
         // Move to next step
         dispatch({ type: 'SET_STEP', step: 2 });
       } else {
-        toast({ 
-          title: "Submission failed", 
-          description: result.message, 
-          variant: "destructive" 
+        toast({
+          title: "Submission failed",
+          description: result.message,
+          variant: "destructive"
         });
       }
     } catch (error) {
       console.error('Error submitting photo & signature:', error);
-      toast({ 
-        title: "Submission failed", 
-        description: "An unexpected error occurred", 
-        variant: "destructive" 
+      toast({
+        title: "Submission failed",
+        description: "An unexpected error occurred",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
   const handleBack = () => {
     // Disabled for step 1
   };
-
   const canSubmit = state.data.photo && state.data.signature;
+
+  // Lazy SigWeb init function
+  const initializeSigWeb = () => {
+    const extendedWindow = window as unknown as ExtendedWindow;
+    if (!extendedWindow.sigWebInitialized) {
+      listener();
+      extendedWindow.sigWebInitialized = true;
+    }
+  };
+
+  const handleSignClick = async () => {
+    try {
+      initializeSigWeb();
+      startTablet(handleSigCapture);
+    } catch (error) {
+      console.error('SigWeb initialization failed:', error);
+      toast({
+        title: "Signature tablet unavailable",
+        description: "Switching to upload mode. Please upload an image signature.",
+        variant: "destructive"
+      });
+      setSignatureMode('upload');
+    }
+  };
 
   return (
     <StepCard>
@@ -284,7 +283,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
         <p className="text-muted-foreground mb-6">
           {mode === 'update' ? 'Update your photo and signature.' : 'Capture or upload your photo and signature.'}
         </p>
-
         {mode === 'update' && isAsideOpen && images && (
           <motion.aside
             initial={{ x: 320 }}
@@ -418,26 +416,24 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
             )}
           </motion.aside>
         )}
-
         {viewingImage && (
-          <div 
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" 
+          <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
             onClick={() => setViewingImage(null)}
           >
-            <button 
-              onClick={() => setViewingImage(null)} 
+            <button
+              onClick={() => setViewingImage(null)}
               className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300"
             >
               &times;
             </button>
-            <img 
-              src={viewingImage} 
-              alt="Full image" 
-              className="max-w-full max-h-full object-contain" 
+            <img
+              src={viewingImage}
+              alt="Full image"
+              className="max-w-full max-h-full object-contain"
             />
           </div>
         )}
-
         <div className={`transition-all duration-300 ${isAsideOpen ? 'md:mr-48' : ''} mr-0`}>
           <div className="grid md:grid-cols-2 gap-8">
             {/* Photo Section */}
@@ -446,7 +442,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                 <Camera className="w-5 h-5 text-primary" />
                 Photo
               </h3>
-              
+             
               <motion.div
   key={photoMode}
   initial={{ opacity: 0, scale: 0.95 }}
@@ -468,12 +464,11 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       Upload
     </button>
   </div>
-
                 {state.data.photo ? (
                   <div className="space-y-4 w-full pt-12">
-                    <img 
-                      src={state.data.photo} 
-                      alt="Captured photo" 
+                    <img
+                      src={state.data.photo}
+                      alt="Captured photo"
                       className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-primary"
                     />
                     <div className="flex gap-2 justify-center">
@@ -510,7 +505,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                           ref={photoCanvasRef}
                           className="hidden"
                         />
-                        <Button 
+                        <Button
                           onClick={capturePhoto}
                           className="rounded-full gradient-primary"
                           type="button"
@@ -532,7 +527,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                     <div>
                       <p className="font-medium">Upload your photo</p>
                       <p className="text-sm text-muted-foreground">JPG, PNG up to 10MB</p>
-                      <Button 
+                      <Button
                         onClick={() => photoInputRef.current?.click()}
                         className="mt-4 rounded-full gradient-primary"
                         type="button"
@@ -551,14 +546,13 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                 )}
               </motion.div>
             </div>
-
             {/* Signature Section */}
             <div className="space-y-2">
               <h3 className="text-xl font-semibold flex items-center gap-2">
                 <Signature className="w-5 h-5 text-primary" />
                 Signature
               </h3>
-              
+             
               <motion.div
   key={signatureMode}
   initial={{ opacity: 0, scale: 0.95 }}
@@ -580,12 +574,11 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
       Upload
     </button>
   </div>
-
                 {state.data.signature ? (
                   <div className="space-y-4 text-center w-full pt-12">
-                    <img 
-                      src={state.data.signature} 
-                      alt="Signature" 
+                    <img
+                      src={state.data.signature}
+                      alt="Signature"
                       className="max-h-20 mx-auto border border-border rounded"
                     />
                     <div className="flex gap-2 justify-center">
@@ -633,7 +626,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                       />
                       <div className="flex gap-4 justify-center mt-2">
                         <Button
-                          onClick={() => startTablet(handleSigCapture)}
+                          onClick={handleSignClick}
                           className="rounded-full gradient-primary px-8"
                           type="button"
                         >
@@ -664,7 +657,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                     <div>
                       <p className="font-medium">Upload signature image</p>
                       <p className="text-sm text-muted-foreground">PNG, JPG with transparent background preferred</p>
-                      <Button 
+                      <Button
                         onClick={() => signatureInputRef.current?.click()}
                         className="mt-4 rounded-full gradient-primary"
                         type="button"
@@ -684,7 +677,6 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
               </motion.div>
             </div>
           </div>
-
           {/* Image Editors */}
           {editingPhoto && state.data.photo && (
             <ImageEditor
@@ -692,7 +684,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
               title="Edit Photo"
               onSave={async (editedImageUrl) => {
                 dispatch({ type: 'SET_PHOTO', photo: editedImageUrl });
-                
+               
                 // Save edited photo to backend
                 const result = await captureBrowse(editedImageUrl, 1);
                 if (result.success) {
@@ -700,20 +692,19 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                 } else {
                   toast({ title: "Photo edited but failed to save", description: result.message, variant: "destructive" });
                 }
-                
+               
                 setEditingPhoto(false);
               }}
               onCancel={() => setEditingPhoto(false)}
             />
           )}
-
           {editingSignature && state.data.signature && (
             <ImageEditor
               imageUrl={state.data.signature}
               title="Edit Signature"
               onSave={async (editedImageUrl) => {
                 dispatch({ type: 'SET_SIGNATURE', signature: editedImageUrl });
-                
+               
                 // Save edited signature to backend
                 const result = await captureBrowse(editedImageUrl, 2);
                 if (result.success) {
@@ -721,13 +712,12 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                 } else {
                   toast({ title: "Signature edited but failed to save", description: result.message, variant: "destructive" });
                 }
-                
+               
                 setEditingSignature(false);
               }}
               onCancel={() => setEditingSignature(false)}
             />
           )}
-
           {/* Navigation and Submit Button */}
           <div className="flex items-center justify-between mt-8">
             {/* Back Button */}
@@ -740,7 +730,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
             >
               Back
             </Button>
-            
+           
             {/* Submit Button (Centered) */}
             <Button
               onClick={handleSubmit}
@@ -761,7 +751,7 @@ export function PhotoSignature({ mode = 'capture' }: PhotoSignatureProps) {
                 'Submit Photo & Signature'
               )}
             </Button>
-            
+           
             {/* Step Indicator */}
             <div className="text-sm text-muted-foreground">
               Step 1 of 4

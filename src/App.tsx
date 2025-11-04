@@ -22,9 +22,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Capture phase routes */}
-            <Route path="/:data?" element={<Gateway />} />
+            <Route path="/imaging/:data?" element={<Gateway />} />
             {/* Approval phase route */}
-            <Route path="/approve" element={<Approval />} />
+            <Route path="/imaging/approve" element={<Approval />} />
             {/* Update phase route */}
             {/* <Route path="/update/" element={<Update />} /> */}
             {/* Enquiry phase route */}
