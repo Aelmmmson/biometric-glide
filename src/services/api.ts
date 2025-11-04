@@ -85,6 +85,13 @@ export const getCustomerId = (): string => {
   return match ? match[1] : '000001'; // Default fallback
 };
 
+// Extract encrypted account ID from URL path like /getimagescred-ABC123XYZ
+export const getEncryptedAccountId = (): string => {
+  const path = window.location.pathname;
+  const match = path.match(/\/getimagescred-([a-zA-Z0-9]+)/);
+  return match ? match[1] : 'fallback-encrypted'; // Default fallback
+};
+
 // Convert image data to base64 string (remove data:image/... prefix if present)
 const getBase64String = (imageData: string): string => {
   if (imageData.startsWith('data:')) {
@@ -206,7 +213,7 @@ export const captureIdentification = async (
 
     if (!response.ok) {
       console.error('captureIdentification server error:', responseText, 'Status:', response.status);
-      throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+      throw new Error(`HTTP error! status: ${response.status}, responseText}`);
     }
 
     if (responseText.trim() === 'Array ()') {
@@ -434,6 +441,41 @@ export const enquiryImages = async (customerId: string): Promise<EnquiryImagesRe
     };
   } catch (error) {
     console.error('Error in enquiryImages:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to retrieve images'
+    };
+  }
+};
+
+// Fetch relation details from encrypted account for new phase
+export const viewRelationDetailsFromAccount = async (encryptedAcctNo: string): Promise<EnquiryImagesResponse> => {
+  try {
+    const response = await fetch(`http://10.203.14.169/imaging/api/view_relation_details-${encryptedAcctNo}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return {
+          status: 'not_found',
+          message: 'No images found for this account credential'
+        };
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return {
+      status: 'success',
+      message: 'Images retrieved successfully',
+      data: result
+    };
+  } catch (error) {
+    console.error('Error in viewRelationDetailsFromAccount:', error);
     return {
       status: 'error',
       message: error instanceof Error ? error.message : 'Failed to retrieve images'

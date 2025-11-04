@@ -10,31 +10,51 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { enquiryImages, getCustomerId } from '@/services/api';
+import { enquiryImages, viewRelationDetailsFromAccount } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import type { EnquiryImagesResponse, DocumentData } from '@/services/api';
 
-const Enquiry = () => {
+interface EnquiryProps {
+  id: string;
+  fetchType?: 'relation' | 'account';
+}
+
+const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imageData, setImageData] = useState<EnquiryImagesResponse['data']>(null);
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   
-  const customerId = getCustomerId();
-
   const fetchImages = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const result = await enquiryImages(customerId);
+      let result: EnquiryImagesResponse;
+      
+      if (fetchType === 'account') {
+        result = await viewRelationDetailsFromAccount(id);
+        // Account-specific error handling
+        if (result.status === 'error' && result.message?.toLowerCase().includes('decrypt') || result.message?.toLowerCase().includes('invalid credential')) {
+          setError('Invalid or expired account credential');
+          toast({ 
+            title: "Access Denied", 
+            description: "The provided account credential could not be resolved.",
+            variant: "destructive" 
+          });
+          setLoading(false);
+          return;
+        }
+      } else {
+        result = await enquiryImages(id);
+      }
       
       if (result.status === 'success' && result.data) {
         setImageData(result.data);
         toast({ title: "Images retrieved successfully!" });
       } else if (result.status === 'not_found') {
-        setError('No images found for this customer');
+        setError(`No images found for this ${fetchType === 'account' ? 'account' : 'relation'}`);
         toast({ 
           title: "No images found", 
           description: result.message,
@@ -59,7 +79,7 @@ const Enquiry = () => {
     } finally {
       setLoading(false);
     }
-  }, [customerId]);
+  }, [id, fetchType]);
 
   useEffect(() => {
     fetchImages();
@@ -157,16 +177,16 @@ const Enquiry = () => {
           className="text-center mb-8"
         >
           <h1 className="text-3xl font-bold mb-2">Customer Account Biometric</h1>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <p className="text-muted-foreground">Customer ID:</p>
-            <Badge variant="secondary" className="text-base">{customerId}</Badge>
-          </div>
-          {imageData && (
+          {/* <div className="flex items-center justify-center gap-2 mb-2">
+            <p className="text-muted-foreground">{fetchType === 'account' ? 'Account Credential:' : 'Customer ID:'}</p>
+            <Badge variant="secondary" className="text-base">{id}</Badge>
+          </div> */}
+          {/* {imageData && (
             <div className="flex items-center justify-center gap-2">
               <p className="text-muted-foreground">Account Mandate:</p>
               <Badge variant="outline" className="text-base">{imageData.account_mandate}</Badge>
             </div>
-          )}
+          )} */}
         </motion.div>
 
         {/* Records */}

@@ -4,11 +4,12 @@ import Approval from "./Approval";
 import Update from "./Update"; // Ensure Update accepts props (see below)
 import Enquiry from "./Enquiry";
 
-type Action = "capture" | "approve" | "update" | "enquiry" | null;
+type Action = "capture" | "approve" | "update" | "enquiry" | "getimagescred" | null;
 
 export default function Gateway() {
     const params = useParams()
-    const isValidFormat = params["data"] ? /^[a-zA-Z]+-\d+$/.test(params.data) : false;
+    // const isValidFormat = params["data"] ? /^[a-zA-Z]+-\d+$/.test(params.data) : false;
+    const isValidFormat = params["data"] ? /^[a-zA-Z]+-[a-zA-Z0-9]+$/ .test(params.data) : false;
 
     const action = isValidFormat ? params.data.split('-').at(0) : null;
     const idNo = isValidFormat ? params.data.split('-').at(1) : null;
@@ -24,8 +25,10 @@ export default function Gateway() {
             return <Approval />
         case "update":
             return <Update relationNo={idNo} /> // Pass the parsed ID here
+        case "getimagescred":
+            return <Enquiry id={idNo} fetchType="relation" />
         case "viewimage":
-            return <Enquiry />
+            return <Enquiry id={idNo} fetchType="account" />
         default:
             return <Index />
     }
