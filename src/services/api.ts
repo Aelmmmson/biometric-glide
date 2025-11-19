@@ -71,6 +71,20 @@ export interface ApprovalResponse {
   code?: number;
 }
 
+
+// Activity configuration interfaces
+export interface ActivityConfig {
+  image: { id: number; status: boolean };
+  identification: { id: number; status: boolean };
+  fingerprint: { id: number; status: boolean };
+}
+
+export interface ActivityConfigResponse {
+  success: boolean;
+  data?: ActivityConfig;
+  message?: string;
+}
+
 // Updated function to extract relation number from URL path for both capture and update modes
 export const getRelationNumber = (): string => {
   const path = window.location.pathname;
@@ -621,3 +635,35 @@ export const getApprovalParams = (): {
     terminal_ip: urlParams.get('terminal_ip') || undefined,
   };
 };
+
+
+// === NEW: Fetch activity configuration to control enabled steps ===
+export const fetchActivityConfig = async (): Promise<ActivityConfigResponse> => {
+  try {
+    const response = await fetch('http://10.203.14.169/imaging/api/activities', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const result = await response.json();
+
+    if (result && result.image && result.identification && result.fingerprint) {
+      return { success: true, data: result as ActivityConfig };
+    }
+
+    console.warn('Unexpected activities response format:', result);
+    return { success: true, data: getDefaultActivityConfig() };
+  } catch (error) {
+    console.error('Failed to fetch activity config:', error);
+    return { success: true, data: getDefaultActivityConfig() }; // safe fallback
+  }
+};
+
+// Fallback when API fails or is unreachable
+const getDefaultActivityConfig = (): ActivityConfig => ({
+  image: { id: 4, status: true },
+  identification: { id: 5, status: true },
+  fingerprint: { id: 6, status: true },
+});

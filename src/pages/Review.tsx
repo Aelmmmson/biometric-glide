@@ -1,228 +1,215 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, Camera, FileText, Fingerprint as FingerprintIcon, Send } from 'lucide-react';
+import {
+  CheckCircle,
+  Camera,
+  FileText,
+  Fingerprint as FingerprintIcon,
+  RefreshCw,
+} from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
-import { PrivacyModal } from '@/components/PrivacyModal';
 import { useBiometric } from '@/contexts/BiometricContext';
 
 export function Review() {
   const { state, dispatch } = useBiometric();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    
-    // Simulate API submission
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    dispatch({ type: 'COMPLETE_PROCESS' });
-    setIsSubmitting(false);
+  const config = state.activityConfig;
+
+  const hasPhotoSignature = state.submissions.photoSignature;
+  const hasIdentification =
+    config?.identification.status && state.submissions.identification;
+  const hasFingerprint =
+    config?.fingerprint.status && state.submissions.thumbprints;
+
+  const submittedCount =
+    Number(hasPhotoSignature) +
+    Number(hasIdentification) +
+    Number(hasFingerprint);
+
+  const isOnlyPhotoSignature = submittedCount === 1 && hasPhotoSignature;
+
+  const startNewCapture = () => {
+    if (window.confirm('Start a new biometric capture session?')) {
+      dispatch({ type: 'RESET' });
+      window.location.reload();
+    }
   };
 
-  const handleBack = () => {
-    dispatch({ type: 'SET_STEP', step: 3 });
+  const closeTab = () => {
+    window.close();
   };
-
-  if (state.isCompleted) {
-    return (
-      <StepCard>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="text-center space-y-6"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          >
-            <CheckCircle className="w-24 h-24 text-green-500 mx-auto" />
-          </motion.div>
-          
-          <div className="space-y-4">
-            <h2 className="text-3xl font-bold text-green-600">Verification Complete!</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Your biometric data has been captured and securely stored.
-            </p>
-          </div>
-
-          <div className="bg-green-50 border border-green-200 rounded-xl p-6 max-w-md mx-auto">
-            <h3 className="font-semibold text-green-800 mb-2">What's next?</h3>
-            <p className="text-sm text-green-600">
-              Processing takes 24-48 hours. You'll receive confirmation via email.
-            </p>
-          </div>
-
-          <Button 
-            onClick={() => window.location.reload()}
-            className="rounded-full px-8 py-3 gradient-primary shadow-button"
-          >
-            Start New Verification
-          </Button>
-        </motion.div>
-      </StepCard>
-    );
-  }
 
   return (
     <StepCard>
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className={`max-w-5xl mx-auto ${
+          isOnlyPhotoSignature ? 'max-w-2xl' : ''
+        }`}
       >
-        <h2 className="text-2xl font-bold mb-1">Submitted Documents</h2>
-        <p className="text-muted-foreground mb-6">
-          Find your submitted information below.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {/* Photo Review */}
+        {/* Success Header */}
+        <div className="text-center mb-6">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-accent/30 rounded-xl p-4 border border-border/50"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+            className="inline-block"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <Camera className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">Photo</h3>
-                <p className="text-sm text-green-600">✓ Submitted</p>
-              </div>
-              <div className="flex-shrink-0">
-                {state.data.photo && (
-                  <img 
-                    src={state.data.photo} 
-                    alt="Profile" 
-                    className="w-12 h-12 object-cover rounded-lg border-2 border-primary/20"
-                  />
-                )}
-              </div>
-            </div>
+            <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-1" />
           </motion.div>
-
-          {/* Signature Review */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-accent/30 rounded-xl p-4 border border-border/50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">Signature</h3>
-                <p className="text-sm text-green-600">✓ Submitted</p>
-              </div>
-              <div className="flex-shrink-0">
-                {state.data.signature && (
-                  <div className="w-12 h-8 bg-white rounded border-2 border-primary/20 flex items-center justify-center">
-                    <img 
-                      src={state.data.signature} 
-                      alt="Signature" 
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ID Review */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-accent/30 rounded-xl p-4 border border-border/50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">Identification</h3>
-                <p className="text-sm text-green-600">✓ Submitted</p>
-              </div>
-              <div className="flex-shrink-0">
-                {state.data.idFront && (
-                  <div className="w-12 h-8 bg-white rounded border-2 border-primary/20 overflow-hidden">
-                    <img 
-                      src={state.data.idFront} 
-                      alt="ID" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Fingerprint Review */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-accent/30 rounded-xl p-4 border border-border/50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <FingerprintIcon className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">Fingerprint</h3>
-                <p className="text-sm text-green-600">✓ Submitted</p>
-              </div>
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          <h5 className="text-xl font-bold text-foreground mb-1">
+            Biometric Capture Complete!
+          </h5>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            All required information has been successfully captured and saved.
+          </p>
         </div>
 
-        {/* Navigation and Submit Button */}
-        <div className="flex items-center justify-between mt-8">
-          {/* Back Button */}
-          <Button
-            onClick={handleBack}
-            variant="outline"
-            className="rounded-full px-6 py-2"
-          >
-            Back
-          </Button>
-          
-          {/* Complete Process Button (Centered) */}
-          <Button 
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="rounded-full px-8 py-3 gradient-primary shadow-button disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                />
-                Processing...
-              </>
-            ) : (
-              'Complete Process'
-            )}
-          </Button>
-          
-          {/* Step Indicator */}
-          <div className="text-sm text-muted-foreground">
-            Step 4 of 4
+        {/* Submitted Items Grid */}
+        <div
+          className={`grid gap-8 mb-12 ${
+            isOnlyPhotoSignature
+              ? 'grid-cols-1 max-w-2xl mx-auto'
+              : submittedCount === 2
+              ? 'grid-cols-1 md:grid-cols-2'
+              : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+          }`}
+        >
+          {/* Photo & Signature */}
+          {hasPhotoSignature && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8 border-2 border-green-200 shadow-lg"
+            >
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <Camera className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-xl font-bold text-green-800">
+                  Photo & Signature
+                </h3>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  {state.data.photo && (
+                    <img
+                      src={state.data.photo}
+                      alt="Captured photo"
+                      className="w-28 h-28 object-cover rounded-xl border-4 border-green-200 shadow-md"
+                    />
+                  )}
+                  {state.data.signature && (
+                    <div className="bg-white p-4 rounded-xl border-4 border-green-200 shadow-md flex items-center justify-center">
+                      <img
+                        src={state.data.signature}
+                        alt="Signature"
+                        className="max-h-20"
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-green-700 font-medium">✓ Successfully Captured</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Identification */}
+          {hasIdentification && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border-2 border-blue-200 shadow-lg"
+            >
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                  <FileText className="w-8 h-8 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-bold text-blue-800">
+                  Identification Document
+                </h3>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  {state.data.idFront && (
+                    <img
+                      src={state.data.idFront}
+                      alt="ID Front"
+                      className="w-32 h-20 object-cover rounded-lg border-4 border-blue-200 shadow-md"
+                    />
+                  )}
+                  {state.data.idBack && (
+                    <img
+                      src={state.data.idBack}
+                      alt="ID Back"
+                      className="w-32 h-20 object-cover rounded-lg border-4 border-blue-200 shadow-md"
+                    />
+                  )}
+                </div>
+                <p className="text-blue-700 font-medium">✓ Successfully Submitted</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Fingerprint */}
+          {hasFingerprint && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8 border-2 border-purple-200 shadow-lg"
+            >
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+                  <FingerprintIcon className="w-8 h-8 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-bold text-purple-800">
+                  Fingerprint
+                </h3>
+                <div className="bg-white p-6 rounded-2xl shadow-inner mt-4">
+                  <CheckCircle className="w-20 h-20 text-purple-600" />
+                </div>
+                <p className="text-purple-700 font-medium">✓ Successfully Captured</p>
+              </div>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Final Actions */}
+        <div className="text-center space-y-8">
+          <div className="bg-gray-50 rounded-2xl p-8 max-w-2xl mx-auto border border-gray-200">
+            <p className="text-lg font-medium text-foreground mb-4">
+              Your session is complete.
+            </p>
+            <p className="text-muted-foreground">
+              You may now safely close this tab or window.
+            </p>
           </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button
+              onClick={startNewCapture}
+              size="lg"
+              className="rounded-full px-10 py-6 gradient-primary shadow-button text-lg font-semibold flex items-center gap-3"
+            >
+              <RefreshCw className="w-5 h-5" />
+              Start New Capture
+            </Button>
+
+            <Button
+              onClick={closeTab}
+              variant="outline"
+              size="lg"
+              className="rounded-full px-10 py-6 text-lg"
+            >
+              Close This Tab
+            </Button>
+          </div>
+
+          <p className="text-sm text-blue-400 mt-8 animate-pulse italic">
+            {/* Need help? Contact support at support@bank.com */}
+            Powered by x100
+          </p>
         </div>
       </motion.div>
     </StepCard>
