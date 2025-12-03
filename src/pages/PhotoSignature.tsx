@@ -9,6 +9,7 @@ import {
   Edit,
   Eye,
 } from 'lucide-react';
+import Webcam from 'react-webcam';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
 import { useBiometric } from '@/contexts/BiometricContext';
@@ -53,24 +54,25 @@ export function PhotoSignature({
   const [isAsideOpen, setIsAsideOpen] = useState(false);
   const [images, setImages] = useState<SearchImagesResponse | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const hasAutoClosed = useRef(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const photoCanvasRef = useRef<HTMLCanvasElement>(null);
+  const webcamRef = useRef<Webcam>(null);
+
+  const videoConstraints = {
+    width: { ideal: 640 },
+    height: { ideal: 480 },
+    facingMode: 'user',
+  };
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopTablet();
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
     };
-  }, [stream]);
+  }, []);
 
   // Update mode: load existing images
   useEffect(() => {
@@ -89,57 +91,18 @@ export function PhotoSignature({
     }
   }, [mode, images, isAsideOpen]);
 
-  // Camera handling
-  useEffect(() => {
-    if (photoMode === 'capture' && !state.data.photo && !stream) {
-      startCamera();
-    } else if (photoMode !== 'capture' && stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-    }
-  }, [photoMode, state.data.photo, stream]);
-
-  const startCamera = async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-      });
-      setStream(mediaStream);
-      if (videoRef.current) videoRef.current.srcObject = mediaStream;
-    } catch (err) {
-      console.error('Error accessing camera:', err);
-      toast({
-        title: "Camera access failed",
-        description: "Please check your permissions and try again. Falling back to upload.",
-        variant: "destructive",
-      });
-      setPhotoMode('upload');
-    }
-  };
-
   const capturePhoto = async () => {
-    if (!videoRef.current || !photoCanvasRef.current || !stream) return;
+    const screenshot = webcamRef.current?.getScreenshot();
+    if (!screenshot) return;
 
-    const video = videoRef.current;
-    const canvas = photoCanvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    dispatch({ type: 'SET_PHOTO', photo: screenshot });
 
-    ctx.drawImage(video, 0, 0);
-    const base64Data = canvas.toDataURL('image/jpeg', 0.8);
-    dispatch({ type: 'SET_PHOTO', photo: base64Data });
-
-    const result = await captureBrowse(base64Data, 1);
+    const result = await captureBrowse(screenshot, 1);
     if (result.success) {
       toast({ title: "Photo captured and saved successfully!" });
     } else {
       toast({ title: "Photo captured but failed to save", description: result.message, variant: "destructive" });
     }
-
-    stream.getTracks().forEach((track) => track.stop());
-    setStream(null);
   };
 
   const getImageSrc = (image?: string) => {
@@ -526,33 +489,28 @@ export function PhotoSignature({
                           </div>
                         ) : photoMode === 'capture' ? (
                           <div className="space-y-4 pt-12">
-                            {stream ? (
-                              <>
-                                <video
-                                  ref={videoRef}
-                                  autoPlay
-                                  playsInline
-                                  className="w-full max-w-xs mx-auto rounded-lg border-2 border-border"
-                                />
-                                <canvas
-                                  ref={photoCanvasRef}
-                                  className="hidden"
-                                />
-                                <Button
-                                  onClick={capturePhoto}
-                                  className="rounded-full gradient-primary"
-                                  type="button"
-                                >
-                                  Take Photo
-                                </Button>
-                              </>
-                            ) : (
-                              <div className="flex flex-col items-center">
-                                <Camera className="w-12 h-12 text-muted-foreground mb-4" />
-                                <p className="font-medium">Initializing camera...</p>
-                                <p className="text-sm text-muted-foreground">Please grant camera access.</p>
-                              </div>
-                            )}
+                            <Webcam
+                              audio={false}
+                              ref={webcamRef}
+                              screenshotFormat="image/jpeg"
+                              videoConstraints={videoConstraints}
+                              onUserMediaError={() => {
+                                toast({
+                                  title: "Camera access failed",
+                                  description: "Please check your permissions and try again. Falling back to upload.",
+                                  variant: "destructive",
+                                });
+                                setPhotoMode('upload');
+                              }}
+                              className="w-full max-w-xs mx-auto rounded-lg border-2 border-border"
+                            />
+                            <Button
+                              onClick={capturePhoto}
+                              className="rounded-full gradient-primary"
+                              type="button"
+                            >
+                              Take Photo
+                            </Button>
                           </div>
                         ) : (
                           <div className="space-y-4 pt-12">

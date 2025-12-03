@@ -91,6 +91,13 @@ For full functionality (fingerprint/signature tablet):
 - Run on the actual teller machine where devices are connected
 - Backend imaging service must be reachable at `10.203.14.169`
 
+
+## Allow Camera Access
+chrome://flags/#unsafely-treat-insecure-origin-as-secure
+
+Add URL to existing paths and relaunch
+Note this only works on chrome, brave and not mozilla
+
 ## Deployment
 
 The app is a static Vite + React SPA. Deploy to any static host (Vercel, Netlify, Cloudflare Pages, etc.).
