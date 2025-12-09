@@ -4,7 +4,7 @@ import Approval from "./Approval";
 import Update from "./Update"; // Ensure Update accepts props (see below)
 import Enquiry from "./Enquiry";
 
-type Action = "capture" | "approve" | "update" | "enquiry" | "getimagescred" | null;
+type Action = "capture" | "approve" | "update" | "enquiry" | "getimagescred" | "getimages" | "viewimage" | null;
 
 export default function Gateway() {
     const params = useParams()
@@ -27,6 +27,8 @@ export default function Gateway() {
             return <Update relationNo={idNo} /> // Pass the parsed ID here
         case "getimagescred":
             return <Enquiry id={idNo} fetchType="relation" />
+        case "getimages":
+            return <Enquiry id={idNo} fetchType="getimages" />
         case "viewimage":
             return <Enquiry id={idNo} fetchType="account" />
         default:

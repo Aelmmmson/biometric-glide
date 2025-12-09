@@ -10,13 +10,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { enquiryImages, viewRelationDetailsFromAccount } from '@/services/api';
+import { enquiryImages, viewRelationDetailsFromAccount, getImagesByAccount } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import type { EnquiryImagesResponse, DocumentData } from '@/services/api';
 
 interface EnquiryProps {
   id: string;
-  fetchType?: 'relation' | 'account';
+  fetchType?: 'relation' | 'account' | 'getimages';
 }
 
 const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
@@ -46,6 +46,8 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
           setLoading(false);
           return;
         }
+      } else if (fetchType === 'getimages') {
+        result = await getImagesByAccount(id);
       } else {
         result = await enquiryImages(id);
       }
@@ -54,7 +56,7 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
         setImageData(result.data);
         toast({ title: "Images retrieved successfully!" });
       } else if (result.status === 'not_found') {
-        setError(`No images found for this ${fetchType === 'account' ? 'account' : 'relation'}`);
+        setError(`No images found for this ${fetchType === 'account' ? 'account' : fetchType === 'getimages' ? 'account' : 'relation'}`);
         toast({ 
           title: "No images found", 
           description: result.message,
@@ -99,22 +101,16 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
 
   const getImageUrl = (imageData: string | undefined): string | undefined => {
     if (!imageData) return undefined;
-    // Assume base64 without prefix; add data URL prefix for display
-    return `data:image/png;base64,${imageData}`;
+    // Assume base64 without prefix; add data URL prefix for display (use jpeg as per backend)
+    return `data:image/jpeg;base64,${imageData}`;
   };
 
   const renderImageCard = (imageData: string | undefined, title: string, icon: React.ElementType) => {
     const Icon = icon;
     const imageUrl = getImageUrl(imageData);
     
-    if (!imageUrl) {
-      return (
-        <div className="border-2 border-dashed border-border rounded-xl p-2 text-center bg-muted/30 aspect-square flex flex-col items-center justify-center">
-          <Icon className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
-          <p className="text-xs text-muted-foreground">No {title.toLowerCase()}</p>
-        </div>
-      );
-    }
+    // Only render if image data exists
+    if (!imageUrl) return null;
 
     return (
       <motion.div
@@ -177,16 +173,16 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
           className="text-center mb-8"
         >
           <h1 className="text-3xl font-bold mb-2">Customer Account Biometric</h1>
-          {/* <div className="flex items-center justify-center gap-2 mb-2">
-            <p className="text-muted-foreground">{fetchType === 'account' ? 'Account Credential:' : 'Customer ID:'}</p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <p className="text-muted-foreground">{fetchType === 'account' ? 'Account Credential:' : 'Customer Account ID:'}</p>
             <Badge variant="secondary" className="text-base">{id}</Badge>
-          </div> */}
-          {/* {imageData && (
+          </div>
+          {fetchType !== 'account' && imageData && imageData.account_mandate && imageData.account_mandate.trim() !== '' && (
             <div className="flex items-center justify-center gap-2">
               <p className="text-muted-foreground">Account Mandate:</p>
               <Badge variant="outline" className="text-base">{imageData.account_mandate}</Badge>
             </div>
-          )} */}
+          )}
         </motion.div>
 
         {/* Records */}
@@ -201,50 +197,59 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
             </Card>
           ) : (
             <Accordion type="multiple" defaultValue={defaultValues} className="w-full">
-              {imageData.enq_details.map((detail, index) => (
-                <AccordionItem key={detail.relation_no} value={`item-${index}`}>
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center justify-between w-full">
-                      <h2 className="text-xl font-bold">Relation No: {detail.relation_no}</h2>
-                      <Badge className="ml-4">View Only</Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-4">
-                    <Card className="p-4">
-                      {/* Biometrics */}
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold mb-4">Biometrics</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                          {renderImageCard(detail.pix, 'Photo', ImageIcon)}
-                          {renderImageCard(detail.signature, 'Signature', FileText)}
-                          {renderImageCard(detail.fingerprint_one, 'Right Thumbprint', ImageIcon)}
-                          {renderImageCard(detail.fingerprint_two, 'Left Thumbprint', ImageIcon)}
-                        </div>
+              {imageData.enq_details.map((detail, index) => {
+                const hasBiometrics = 
+                  detail.pix?.trim() || 
+                  detail.signature?.trim() || 
+                  detail.fingerprint_one?.trim() || 
+                  detail.fingerprint_two?.trim();
+                return (
+                  <AccordionItem key={detail.relation_no} value={`item-${index}`}>
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center justify-between w-full">
+                        <h2 className="text-xl font-bold">Relation No: {detail.relation_no}</h2>
+                        <Badge className="ml-4">View Only</Badge>
                       </div>
-
-                      {/* Documents */}
-                      {detail.docs && detail.docs.length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Documents</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            {detail.docs.flatMap((doc: DocumentData) => [
-                              doc.sides.front && { img: doc.sides.front, title: `${doc.type.replace(/_/g, ' ')} Front` },
-                              doc.sides.back && { img: doc.sides.back, title: `${doc.type.replace(/_/g, ' ')} Back` },
-                            ].filter(Boolean)).map((item, docIndex) => (
-                              <div key={docIndex} className="space-y-2">
-                                <h4 className="font-semibold text-xs capitalize text-center">
-                                  {item.title}
-                                </h4>
-                                {renderImageCard(item.img, item.title, FileText)}
-                              </div>
-                            ))}
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-4">
+                      <Card className="p-4">
+                        {/* Biometrics */}
+                        {hasBiometrics && (
+                          <div className="mb-6">
+                            <h3 className="text-lg font-semibold mb-4">Biometrics</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+                              {detail.pix?.trim() && renderImageCard(detail.pix, 'Photo', ImageIcon)}
+                              {detail.signature?.trim() && renderImageCard(detail.signature, 'Signature', FileText)}
+                              {detail.fingerprint_one?.trim() && renderImageCard(detail.fingerprint_one, 'Right Thumbprint', ImageIcon)}
+                              {detail.fingerprint_two?.trim() && renderImageCard(detail.fingerprint_two, 'Left Thumbprint', ImageIcon)}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </Card>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
+                        )}
+
+                        {/* Documents */}
+                        {detail.docs && detail.docs.length > 0 && (
+                          <div>
+                            <h3 className="text-lg font-semibold mb-4">Documents</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              {detail.docs.flatMap((doc: DocumentData) => [
+                                doc.sides.front && { img: doc.sides.front, title: `${doc.type.replace(/_/g, ' ')} Front` },
+                                doc.sides.back && { img: doc.sides.back, title: `${doc.type.replace(/_/g, ' ')} Back` },
+                              ].filter(Boolean)).map((item, docIndex) => (
+                                <div key={docIndex} className="space-y-2">
+                                  <h4 className="font-semibold text-xs capitalize text-center">
+                                    {item.title}
+                                  </h4>
+                                  {renderImageCard(item.img, item.title, FileText)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
             </Accordion>
           )}
         </div>

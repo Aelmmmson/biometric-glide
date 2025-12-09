@@ -86,7 +86,7 @@ export function PhotoSignature({
   useEffect(() => {
     if (mode === 'update' && images && isAsideOpen && !hasAutoClosed.current) {
       hasAutoClosed.current = true;
-      const timer = setTimeout(() => setIsAsideOpen(false), 10000);
+      const timer = setTimeout(() => setIsAsideOpen(false), 300000);
       return () => clearTimeout(timer);
     }
   }, [mode, images, isAsideOpen]);

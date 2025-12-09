@@ -107,32 +107,7 @@ export function Identification({
         .then((imgData) => {
           setImages(imgData);
           if (imgData.status === 'success' && imgData.data) {
-            const docMap: Record<DocumentType, DocumentSides> = {
-              national_id: {},
-              passport: {},
-              voter_id: {},
-              drivers_license: {},
-            };
-            idTypes.forEach((t) => {
-              let sides: DocumentSides = {};
-              const unappDoc = imgData.data?.unapproved?.documents?.find(
-                (d: DocumentData) => d.type === t.id
-              );
-              if (unappDoc) {
-                sides = unappDoc.sides;
-              } else {
-                const appDoc = imgData.data?.approved?.documents?.find(
-                  (d: DocumentData) => d.type === t.id
-                );
-                if (appDoc) {
-                  sides = appDoc.sides;
-                }
-              }
-              if ((sides.front || sides.back) || t.id === 'national_id') {
-                docMap[t.id] = sides;
-              }
-            });
-            setDocuments(docMap);
+            // In update mode, do not populate documents for main area; handle in aside only
           }
         })
         .catch(console.error);
@@ -147,7 +122,7 @@ export function Identification({
       !hasAutoClosed.current
     ) {
       hasAutoClosed.current = true;
-      const timer = setTimeout(() => setIsAsideOpen(false), 10000);
+      const timer = setTimeout(() => setIsAsideOpen(false), 300000);
       return () => clearTimeout(timer);
     }
   }, [mode, images, isAsideOpen]);

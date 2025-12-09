@@ -187,14 +187,14 @@ export function Review() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button
+            {/* <Button
               onClick={startNewCapture}
               size="lg"
               className="rounded-full px-10 py-6 gradient-primary shadow-button text-lg font-semibold flex items-center gap-3"
             >
               <RefreshCw className="w-5 h-5" />
               Start New Capture
-            </Button>
+            </Button> */}
 
             <Button
               onClick={closeTab}

@@ -26,7 +26,8 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  AlertCircle
+  AlertCircle,
+  ArrowUp
 } from 'lucide-react';
 
 // Define ApprovalParams interface to include imageTypes
@@ -59,7 +60,22 @@ const Approval = () => {
   const [searchRelationNo, setSearchRelationNo] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [approvalParams, setApprovalParams] = useState<ReturnType<typeof getApprovalParams>>({});
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const dialogCloseRef = useRef<HTMLButtonElement>(null); // Ref to programmatically close dialog
+
+  // Scroll to top functionality
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Memoize handleSearch to prevent unnecessary re-creations
   const handleSearch = useCallback(async (relationno?: string) => {
@@ -225,67 +241,73 @@ const Approval = () => {
     }
   };
 
+  // Modified ImageCard to use object-cover for Photo and Signature to fill the container width/height
   const ImageCard = ({
     title,
     icon: Icon,
     image,
-    type
+    type,
+    className = ''
   }: {
     title: string;
     icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
     image?: string;
     type: 'approved' | 'unapproved';
-  }) => (
-    <Card className={`${type === 'unapproved' ? 'border-orange-200' : 'border-green-200'}`}>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <Icon className="w-4 h-4" />
-          {title}
-          <Badge
-            variant={type === 'approved' ? 'default' : 'secondary'}
-            className={type === 'approved' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}
-          >
-            {type === 'approved' ? 'Approved' : 'Pending'}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {image && image.trim() !== '' ? (
-          <div className="space-y-2">
-            <div className="aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
-              <img
-                src={image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`}
-                alt={title}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
-                  <Eye className="w-3 h-3 mr-1" />
-                  View Full Size
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <VisuallyHidden>
-                  <DialogTitle>Full Size {title}</DialogTitle>
-                </VisuallyHidden>
+    className?: string;
+  }) => {
+    const isPhotoOrSignature = title === 'Photo' || title === 'Signature';
+    return (
+      <Card className={`${type === 'unapproved' ? 'border-orange-200' : 'border-green-200'} ${className}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Icon className="w-4 h-4" />
+            {title}
+            <Badge
+              variant={type === 'approved' ? 'default' : 'secondary'}
+              className={type === 'approved' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}
+            >
+              {type === 'approved' ? 'Approved' : 'Pending'}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {image && image.trim() !== '' ? (
+            <div className="space-y-2">
+              <div className="aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
                 <img
                   src={image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`}
                   alt={title}
-                  className="w-full h-auto"
+                  className={`w-full h-full ${isPhotoOrSignature ? 'object-cover' : 'object-contain'}`}
                 />
-              </DialogContent>
-            </Dialog>
-          </div>
-        ) : (
-          <div className="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center">
-            <span className="text-gray-400 text-sm">No image available</span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+              </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full">
+                    <Eye className="w-3 h-3 mr-1" />
+                    View Full Size
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <VisuallyHidden>
+                    <DialogTitle>Full Size {title}</DialogTitle>
+                  </VisuallyHidden>
+                  <img
+                    src={image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`}
+                    alt={title}
+                    className="w-full h-auto"
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+          ) : (
+            <div className="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center">
+              <span className="text-gray-400 text-sm">No image available</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   // Get all image configs for non-document images
   const getAllImageConfigs = (data: NonNullable<SearchImagesResponse['data']>): StepImageConfig[] => {
@@ -299,7 +321,7 @@ const Approval = () => {
     return configs;
   };
 
-  // Render non-document unapproved images
+  // Updated renderNonDocUnapprovedImages to use a 12-column grid on lg, with each card spanning 6 columns
   const renderNonDocUnapprovedImages = () => {
     if (!searchResults?.data) return null;
 
@@ -311,10 +333,11 @@ const Approval = () => {
 
     if (unapprovedConfigs.length === 0) return null;
 
-    const gridCols = 'lg:grid-cols-4';
+    // Grid setup: 1 col on small, 2 on md, 12 on lg for flexible spanning
+    const gridCols = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12';
 
     return (
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4 mb-6`}>
+      <div className={`${gridCols} gap-4 mb-6`}>
         {unapprovedConfigs.map((config) => (
           <ImageCard
             key={config.key}
@@ -322,13 +345,14 @@ const Approval = () => {
             icon={config.icon}
             image={searchResults.data.unapproved[config.key]}
             type="unapproved"
+            className="md:col-span-1 lg:col-span-6"
           />
         ))}
       </div>
     );
   };
 
-  // Render document unapproved images
+  // Render document unapproved images (updated grid for consistency)
   const renderDocUnapprovedImages = () => {
     if (!searchResults?.data?.unapproved?.documents || searchResults.data.unapproved.documents.length === 0) return null;
 
@@ -338,6 +362,9 @@ const Approval = () => {
           const hasFront = !!doc.sides.front && doc.sides.front.trim() !== '';
           const hasBack = !!doc.sides.back && doc.sides.back.trim() !== '';
           if (!hasFront && !hasBack) return null;
+
+          // Updated grid: 1 col default, 2 on md, 12 on lg
+          const innerGridCols = `${hasBack ? 'md:grid-cols-2 lg:grid-cols-12' : 'grid-cols-1'} gap-4`;
 
           return (
             <Card key={doc.type} className="border-orange-200">
@@ -351,13 +378,14 @@ const Approval = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`grid ${hasBack ? 'md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                <div className={innerGridCols}>
                   {hasFront && (
                     <ImageCard
                       title={`${doc.type.replace('_', ' ')} (Front)`}
                       icon={FileText}
                       image={doc.sides.front}
                       type="unapproved"
+                      className={hasBack ? 'lg:col-span-6' : ''}
                     />
                   )}
                   {hasBack && (
@@ -366,6 +394,7 @@ const Approval = () => {
                       icon={FileText}
                       image={doc.sides.back}
                       type="unapproved"
+                      className="lg:col-span-6"
                     />
                   )}
                 </div>
@@ -392,7 +421,7 @@ const Approval = () => {
     );
   };
 
-  // Render non-document approved images
+  // Updated renderNonDocApprovedImages to use a 12-column grid on lg, with each card spanning 6 columns
   const renderNonDocApprovedImages = () => {
     if (!searchResults?.data?.approved) return null;
 
@@ -403,24 +432,26 @@ const Approval = () => {
 
     if (configsToRender.length === 0) return null;
 
-    const gridCols = 'lg:grid-cols-4';
+    // Grid setup: 1 col on small, 2 on md, 12 on lg for flexible spanning
+    const gridCols = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12';
 
     return (
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4 mb-6`}>
-        {configsToRender.map(config => (
+      <div className={`${gridCols} gap-4 mb-6`}>
+        {configsToRender.map((config) => (
           <ImageCard
             key={config.key}
             title={config.title}
             icon={config.icon}
             image={approved[config.key]}
             type="approved"
+            className="md:col-span-1 lg:col-span-6"
           />
         ))}
       </div>
     );
   };
 
-  // Render document approved images
+  // Render document approved images (updated grid for consistency)
   const renderDocApprovedImages = () => {
     if (!searchResults?.data?.approved?.documents || searchResults.data.approved.documents.length === 0) return null;
 
@@ -430,6 +461,9 @@ const Approval = () => {
           const hasFront = !!doc.sides.front && doc.sides.front.trim() !== '';
           const hasBack = !!doc.sides.back && doc.sides.back.trim() !== '';
           if (!hasFront && !hasBack) return null;
+
+          // Updated grid: 1 col default, 2 on md, 12 on lg
+          const innerGridCols = `${hasBack ? 'md:grid-cols-2 lg:grid-cols-12' : 'grid-cols-1'} gap-4`;
 
           return (
             <Card key={doc.type} className="border-green-200">
@@ -443,13 +477,14 @@ const Approval = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`grid ${hasBack ? 'md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                <div className={innerGridCols}>
                   {hasFront && (
                     <ImageCard
                       title={`${doc.type.replace('_', ' ')} (Front)`}
                       icon={FileText}
                       image={doc.sides.front}
                       type="approved"
+                      className={hasBack ? 'lg:col-span-6' : ''}
                     />
                   )}
                   {hasBack && (
@@ -458,6 +493,7 @@ const Approval = () => {
                       icon={FileText}
                       image={doc.sides.back}
                       type="approved"
+                      className="lg:col-span-6"
                     />
                   )}
                 </div>
@@ -681,6 +717,24 @@ const Approval = () => {
           )}
         </div>
       </div>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          className="fixed bottom-6 right-6 z-50"
+        >
+          <Button
+            onClick={scrollToTop}
+            size="icon"
+            className="rounded-full bg-primary/80 hover:bg-primary shadow-lg"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </Button>
+        </motion.div>
+      )}
     </div>
   );
 };

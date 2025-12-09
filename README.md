@@ -20,7 +20,7 @@ This system integrates with a legacy PHP backend (`http://10.203.14.169/imaging/
 ## Examples
 - capture="http://localhost:8089/capture-52136502
 - approve="http://localhost:8089/imaging/approve?relationno=52136502&batch=111&custno=111&approved_by=sss&hostname=00&terminal_ip=01010"
-- update = "http://localhost:8089/update-232"
+- update = "http://localhost:8089/omaging/update-232"
 - enquiry= "http://localhost:8089/imaging/viewimage-52136502"
            "http://localhost:8089/imaging/getimagescred-52136502"
 

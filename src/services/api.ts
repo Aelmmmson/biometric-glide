@@ -462,6 +462,41 @@ export const enquiryImages = async (customerId: string): Promise<EnquiryImagesRe
   }
 };
 
+// NEW: Fetch images by plain account number (non-encrypted) via cash_enquiry endpoint
+export const getImagesByAccount = async (account: string): Promise<EnquiryImagesResponse> => {
+  try {
+    const response = await fetch(`http://10.203.14.169/imaging/api/cash_enquiry-${account}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return {
+          status: 'not_found',
+          message: 'No images found for this account'
+        };
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return {
+      status: 'success',
+      message: 'Images retrieved successfully',
+      data: result
+    };
+  } catch (error) {
+    console.error('Error in getImagesByAccount:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to retrieve images'
+    };
+  }
+};
+
 // Fetch relation details from encrypted account for new phase
 export const viewRelationDetailsFromAccount = async (encryptedAcctNo: string): Promise<EnquiryImagesResponse> => {
   try {
