@@ -10,6 +10,7 @@ import Update from "./pages/Update";
 import Enquiry from "./pages/Enquiry";
 import NotFound from "./pages/NotFound";
 import Gateway from "./pages/Gateway";
+import { StepConfigurationPage } from "./components/StepConfigurationPage";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +25,8 @@ const App = () => (
             {/* Capture phase routes */}
             <Route path="/imaging/:data?" element={<Gateway />} />
             {/* Approval phase route */}
-            <Route path="/imaging/approve" element={<Approval />} />
+            {/* <Route path="/imaging/approve" element={<Approval />} /> */}
+            <Route path="/imaging/image_approval_screen" element={<Approval />} />
             {/* Update phase route */}
             {/* <Route path="/update/" element={<Update />} /> */}
             {/* Enquiry phase route */}
@@ -32,6 +34,7 @@ const App = () => (
             {/* Default route */}
             {/* <Route path="/" element={<Index />} /> */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/imaging/stepconfig" element={<StepConfigurationPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

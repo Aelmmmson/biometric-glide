@@ -48,6 +48,8 @@ export interface SearchImagesResponse {
       documents?: DocumentData[];
       thumbprint1?: string; // Right thumb
       thumbprint2?: string; // Left thumb
+      limit?: string;
+      mandate?: string;
     };
     unapproved?: {
       photo?: string;
@@ -55,7 +57,11 @@ export interface SearchImagesResponse {
       documents?: DocumentData[];
       thumbprint1?: string;
       thumbprint2?: string;
+      limit?: string;
+      mandate?: string;
     };
+    name?: string;
+    relation_no?: string;
   };
 }
 
@@ -341,7 +347,7 @@ export const updateData = async (data: {
 // Initialize fingerprint device
 export const initFingerprint = async (): Promise<CaptureResponse> => {
   try {
-    const response = await fetch('http://192.168.1.156:8080/init', {
+    const response = await fetch('http://192.168.1.142:8080/init', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -372,7 +378,7 @@ export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: strin
     formData.append('relation_no', relationNo);
     formData.append('thumbprint', thumb);  // Payload: '1' for thumbprint 1 (right), '2' for thumbprint 2 (left)
 
-    const response = await fetch('http://192.168.1.156:8080/capture', {
+    const response = await fetch('http://192.168.1.142:8080/capture', {
       method: 'POST',
       body: formData,
     });
@@ -661,13 +667,39 @@ export const getApprovalParams = (): {
   terminal_ip?: string;
 } => {
   const urlParams = new URLSearchParams(window.location.search);
+  let relationno = urlParams.get('relationno');
+  let batch = urlParams.get('batch');
+  let custno = urlParams.get('custno');
+  let approved_by = urlParams.get('approved_by');
+  let hostname = urlParams.get('hostname');
+  let terminal_ip = urlParams.get('terminal_ip');
+
+  if (!relationno) {
+    // Fallback to path parsing for new URL format
+    const path = window.location.pathname;
+    const pathMatch = path.match(/\/image_approval_screen-(.*)$/);
+    if (pathMatch) {
+      const remaining = pathMatch[1].split('-');
+      if (remaining.length >= 6) {
+        relationno = remaining[0];
+        batch = remaining[1];
+        custno = remaining[2];
+        approved_by = remaining[3];
+        const hostnameStart = 4;
+        terminal_ip = remaining[remaining.length - 1];
+        const hostnameParts = remaining.slice(hostnameStart, -1);
+        hostname = hostnameParts.join('-');
+      }
+    }
+  }
+
   return {
-    relationno: urlParams.get('relationno') || undefined,
-    batch: urlParams.get('batch') || undefined,
-    custno: urlParams.get('custno') || undefined,
-    approved_by: urlParams.get('approved_by') || undefined,
-    hostname: urlParams.get('hostname') || undefined,
-    terminal_ip: urlParams.get('terminal_ip') || undefined,
+    relationno: relationno || undefined,
+    batch: batch || undefined,
+    custno: custno || undefined,
+    approved_by: approved_by || undefined,
+    hostname: hostname || undefined,
+    terminal_ip: terminal_ip || undefined,
   };
 };
 
@@ -702,3 +734,52 @@ const getDefaultActivityConfig = (): ActivityConfig => ({
   identification: { id: 5, status: true },
   fingerprint: { id: 6, status: true },
 });
+
+
+// Save activity configuration
+
+export const saveActivityConfig = async (config: ActivityConfig): Promise<ActivityConfigResponse> => {
+  try {
+    const response = await fetch('http://10.203.14.169/imaging/api/activities', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(config),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Backend likely returns the saved config or a success message
+    // We try to parse it similarly to fetchActivityConfig
+    if (result && typeof result === 'object') {
+      if (result.image && result.identification && result.fingerprint) {
+        // Full config returned
+        return { success: true, data: result as ActivityConfig };
+      }
+
+      // Might return { success: true, message: '...' } or similar
+      if (result.success !== undefined) {
+        return {
+          success: result.success,
+          message: result.message || (result.success ? 'Configuration saved' : 'Save failed'),
+          data: result.data as ActivityConfig | undefined,
+        };
+      }
+    }
+
+    // Fallback: assume success if no error
+    return { success: true, message: 'Configuration saved successfully' };
+  } catch (error) {
+    console.error('Failed to save activity config:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to save configuration',
+    };
+  }
+};

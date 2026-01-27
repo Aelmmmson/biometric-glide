@@ -18,13 +18,19 @@ This system integrates with a legacy PHP backend (`http://10.203.14.169/imaging/
 
 ## URL Access Patterns
 ## Examples
-- capture="http://localhost:8089/capture-52136502
-- approve="http://localhost:8089/imaging/approve?relationno=52136502&batch=111&custno=111&approved_by=sss&hostname=00&terminal_ip=01010"
-- update = "http://localhost:8089/omaging/update-232"
-- enquiry= "http://localhost:8089/imaging/viewimage-52136502"
+- capture = "http://localhost:8089/imaging/capture-52136502"
+
+- approval = "http://localhost:8089/imaging/image_approval_screen-5213650487-202512082003-0204814-UNIONADMIN-WIN-GCCIHDIMBAR-10.10.1.132"
+
+- update = "http://localhost:8089/imaging/update-232"
+
+- enquiry = "http://localhost:8089/imaging/viewimage-52136502"
            "http://localhost:8089/imaging/getimagescred-52136502"
+           By Relation No: "http://localhost:8089/imaging/getimages-5213650014".
 
 ## !! use new relation numbers
+
+
 
 | Purpose                  | URL Example                                | Mode      | Notes |
 |--------------------------|--------------------------------------------|-----------|-------|
