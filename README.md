@@ -309,3 +309,6 @@ Approval: Navigate to http://localhost:8089/imaging/image_approval_screen-123456
 Enquiry: Navigate to http://localhost:8089/imaging/viewimage-000123
 Note: Ensure the backend is running before accessing any of these routes.
 
+Thank you...
+
+
