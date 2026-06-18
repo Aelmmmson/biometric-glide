@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useBiometric } from "@/contexts/BiometricContext";
+import { useBiometric } from "@/hooks/useBiometric";
 import { toast } from "@/hooks/use-toast";
 import { ImageEditor } from "@/components/ImageEditor";
 import {
@@ -557,6 +557,13 @@ export function Identification({
                       <div className="space-y-3">
                         <div className="absolute top-2 right-2 flex gap-1">
                           <button
+                            onClick={() => setViewingImage(documents.national_id.front)}
+                            className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600 transition-colors"
+                            title="View full image"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </button>
+                          <button
                             onClick={() =>
                               setEditing({ type: "national_id", side: "front" })
                             }
@@ -573,12 +580,18 @@ export function Identification({
                             <X className="w-3 h-3" />
                           </button>
                         </div>
-                        <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
+                        <div 
+                          className="bg-white rounded-xl p-4 inline-block shadow-soft relative group cursor-pointer"
+                          onClick={() => setViewingImage(documents.national_id.front)}
+                        >
                           <img
                             src={documents.national_id.front}
                             alt="National ID front"
                             className="max-w-xs max-h-32 object-contain rounded-lg"
                           />
+                          <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Eye className="w-8 h-8 text-white" />
+                          </div>
                         </div>
                         <p className="text-sm text-green-600 font-semibold">
                           ✓ Captured successfully
@@ -635,6 +648,13 @@ export function Identification({
                       <div className="space-y-3">
                         <div className="absolute top-2 right-2 flex gap-1">
                           <button
+                            onClick={() => setViewingImage(documents.national_id.back)}
+                            className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600 transition-colors"
+                            title="View full image"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </button>
+                          <button
                             onClick={() =>
                               setEditing({ type: "national_id", side: "back" })
                             }
@@ -651,12 +671,18 @@ export function Identification({
                             <X className="w-3 h-3" />
                           </button>
                         </div>
-                        <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
+                        <div 
+                          className="bg-white rounded-xl p-4 inline-block shadow-soft relative group cursor-pointer"
+                          onClick={() => setViewingImage(documents.national_id.back)}
+                        >
                           <img
                             src={documents.national_id.back}
                             alt="National ID back"
                             className="max-w-xs max-h-32 object-contain rounded-lg"
                           />
+                          <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Eye className="w-8 h-8 text-white" />
+                          </div>
                         </div>
                         <p className="text-sm text-green-600 font-semibold">
                           ✓ Captured successfully
@@ -767,15 +793,27 @@ export function Identification({
                                 alt={`${type.label} ${s.side}`}
                                 className="w-full h-full object-cover rounded"
                               />
-                              <button
-                                onClick={(e) =>
-                                  handleEditClick(type.id, s.side, e)
-                                }
-                                className="absolute -top-1 -right-1 bg-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="Edit image"
-                              >
-                                <Edit className="w-3 h-3 text-primary" />
-                              </button>
+                              <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewingImage(s.src!);
+                                  }}
+                                  className="bg-blue-500 rounded-full p-0.5 text-white"
+                                  title="View image"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={(e) =>
+                                    handleEditClick(type.id, s.side, e)
+                                  }
+                                  className="bg-white rounded-full p-0.5"
+                                  title="Edit image"
+                                >
+                                  <Edit className="w-3 h-3 text-primary" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -847,7 +885,14 @@ export function Identification({
                       <motion.div className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-accent/30 relative min-h-[250px] flex items-center justify-center">
                         {currentOptionalDoc.front ? (
                           <div className="space-y-3 relative">
-                            <div className="absolute top-2 right-2">
+                            <div className="absolute top-2 right-2 flex gap-1">
+                              <button
+                                onClick={() => setViewingImage(currentOptionalDoc.front)}
+                                className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600 transition-colors"
+                                title="View full image"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </button>
                               <button
                                 onClick={() =>
                                   handleClear(selectedOptionalType, "front")
@@ -858,12 +903,18 @@ export function Identification({
                                 <X className="w-3 h-3" />
                               </button>
                             </div>
-                            <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
+                            <div 
+                              className="bg-white rounded-xl p-4 inline-block shadow-soft relative group cursor-pointer"
+                              onClick={() => setViewingImage(currentOptionalDoc.front)}
+                            >
                               <img
                                 src={currentOptionalDoc.front}
                                 alt={`${selectedOptionalInfo.label} front`}
                                 className="max-w-xs max-h-32 object-contain rounded-lg"
                               />
+                              <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Eye className="w-8 h-8 text-white" />
+                              </div>
                             </div>
                             <p className="text-sm text-green-600 font-semibold">
                               ✓ Captured successfully
@@ -925,7 +976,14 @@ export function Identification({
                         <motion.div className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-accent/30 relative min-h-[250px] flex items-center justify-center">
                           {currentOptionalDoc.back ? (
                             <div className="space-y-3 relative">
-                              <div className="absolute top-2 right-2">
+                             <div className="absolute top-2 right-2 flex gap-1">
+                                <button
+                                  onClick={() => setViewingImage(currentOptionalDoc.back)}
+                                  className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600 transition-colors"
+                                  title="View full image"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </button>
                                 <button
                                   onClick={() =>
                                     handleClear(selectedOptionalType, "back")
@@ -936,12 +994,18 @@ export function Identification({
                                   <X className="w-3 h-3" />
                                 </button>
                               </div>
-                              <div className="bg-white rounded-xl p-4 inline-block shadow-soft">
+                              <div 
+                                className="bg-white rounded-xl p-4 inline-block shadow-soft relative group cursor-pointer"
+                                onClick={() => setViewingImage(currentOptionalDoc.back)}
+                              >
                                 <img
                                   src={currentOptionalDoc.back}
                                   alt={`${selectedOptionalInfo.label} back`}
                                   className="max-w-xs max-h-32 object-contain rounded-lg"
                                 />
+                                <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Eye className="w-8 h-8 text-white" />
+                                </div>
                               </div>
                               <p className="text-sm text-green-600 font-semibold">
                                 ✓ Captured successfully

@@ -1,5 +1,5 @@
-import { createContext, useContext, useReducer, ReactNode } from 'react';
-import type { ActivityConfig } from '@/services/api';
+import { createContext, useReducer, ReactNode } from 'react';
+import type { ActivityConfig, BiometricParams } from '@/services/api';
 
 interface BiometricData {
   photo: string | null;
@@ -14,6 +14,7 @@ interface BiometricData {
 interface BiometricState {
   currentStep: number;
   data: BiometricData;
+  params: BiometricParams;
   submissions: {
     photoSignature: boolean;
     identification: boolean;
@@ -33,6 +34,7 @@ type BiometricAction =
   | { type: 'SET_ID_BACK'; idBack: string | null }
   | { type: 'SET_THUMBPRINT1'; thumbprint1: string | null }
   | { type: 'SET_THUMBPRINT2'; thumbprint2: string | null }
+  | { type: 'SET_PARAMS'; params: BiometricParams }
   | { type: 'SUBMIT_PHOTO_SIGNATURE' }
   | { type: 'SUBMIT_IDENTIFICATION' }
   | { type: 'SUBMIT_THUMBPRINTS' }
@@ -52,6 +54,7 @@ const initialState: BiometricState = {
     thumbprint1: null,
     thumbprint2: null,
   },
+  params: {},
   submissions: {
     photoSignature: false,
     identification: false,
@@ -80,6 +83,8 @@ function biometricReducer(state: BiometricState, action: BiometricAction): Biome
       return { ...state, data: { ...state.data, thumbprint1: action.thumbprint1 } };
     case 'SET_THUMBPRINT2':
       return { ...state, data: { ...state.data, thumbprint2: action.thumbprint2 } };
+    case 'SET_PARAMS':
+      return { ...state, params: action.params };
     case 'SUBMIT_PHOTO_SIGNATURE':
       return { ...state, submissions: { ...state.submissions, photoSignature: true } };
     case 'SUBMIT_IDENTIFICATION':
@@ -106,7 +111,7 @@ interface BiometricContextValue {
   setActivityConfigLoaded: () => void;
 }
 
-const BiometricContext = createContext<BiometricContextValue | null>(null);
+export const BiometricContext = createContext<BiometricContextValue | null>(null);
 
 export function BiometricProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(biometricReducer, initialState);
@@ -122,10 +127,4 @@ export function BiometricProvider({ children }: { children: ReactNode }) {
       {children}
     </BiometricContext.Provider>
   );
-}
-
-export function useBiometric() {
-  const context = useContext(BiometricContext);
-  if (!context) throw new Error('useBiometric must be used within BiometricProvider');
-  return context;
 }

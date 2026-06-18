@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
-import { useBiometric } from '@/contexts/BiometricContext';
+import { useBiometric } from '@/hooks/useBiometric';
 
 export function Review() {
   const { state, dispatch } = useBiometric();

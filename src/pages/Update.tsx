@@ -4,7 +4,7 @@ import { PhotoSignature } from './PhotoSignature';
 import { Identification } from './Identification';
 import { Fingerprint } from './Fingerprint';
 import { Review } from './Review';
-import { useBiometric } from '@/contexts/BiometricContext';
+import { useBiometric } from '@/hooks/useBiometric';
 import { fetchActivityConfig } from '@/services/api';
 import { useEffect, useMemo } from 'react';
 
@@ -58,17 +58,6 @@ const Update = ({ relationNo }: UpdateProps) => {
     dispatch({ type: 'SET_STEP', step: next });
   };
 
-  // ← FIX: Always valid child for AnimatePresence
-  const CurrentStep = () => {
-    if (state.currentStep === 1) return <PhotoSignature mode="update" onNext={goToNextStep} />;
-    if (state.currentStep === 2 && state.activityConfig?.identification.status)
-      return <Identification mode="update" onNext={goToNextStep} />;
-    if (state.currentStep === 3 && state.activityConfig?.fingerprint.status)
-      return <Fingerprint mode="update" onNext={goToNextStep} />;
-    if (state.currentStep === 4) return <Review />;
-
-    return <div className="text-center py-10">Loading step...</div>;
-  };
 
   const completedSteps = useMemo(() => {
     const c: number[] = [];
@@ -110,7 +99,29 @@ const Update = ({ relationNo }: UpdateProps) => {
 
           <div className="lg:col-span-3">
             <AnimatePresence mode="wait">
-              <CurrentStep key={state.currentStep} />
+              <motion.div
+                key={state.currentStep}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {state.currentStep === 1 && (
+                  <PhotoSignature mode="update" onNext={goToNextStep} />
+                )}
+                {state.currentStep === 2 && state.activityConfig?.identification.status && (
+                  <Identification mode="update" onNext={goToNextStep} />
+                )}
+                {state.currentStep === 3 && state.activityConfig?.fingerprint.status && (
+                  <Fingerprint mode="update" onNext={goToNextStep} />
+                )}
+                {state.currentStep === 4 && (
+                  <Review />
+                )}
+                {state.currentStep > 4 || (state.currentStep > 1 && !state.activityConfig) ? (
+                  <div className="text-center py-10">Loading step...</div>
+                ) : null}
+              </motion.div>
             </AnimatePresence>
           </div>
         </div>

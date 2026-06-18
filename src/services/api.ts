@@ -1,5 +1,11 @@
 // API service for backend imaging system integration
 
+const getBaseUrl = () => {
+  // Always use the proxy path in development to ensure consistent behavior
+  // and avoid CORS issues. The Vite proxy handles routing to the correct backend IP.
+  return '/legacy-imaging';
+};
+
 export interface CaptureResponse {
   success: boolean;
   message?: string;
@@ -30,6 +36,8 @@ export interface EnqDetail {
   signature?: string;
   fingerprint_one?: string;
   fingerprint_two?: string;
+  limit?: number;
+  sign_category?: string;
   docs: DocumentData[];
 }
 
@@ -77,6 +85,29 @@ export interface ApprovalResponse {
   code?: number;
 }
 
+export interface ChequeDetailResponse {
+  status: 'success' | 'error';
+  message: string;
+  data?: {
+    [x: string]: string;
+    instrumentCode: string;
+    rejectionReason: string;
+    chequeNo: string;
+    chequeStatus: string;
+    payerBban: string;
+    payerName: string;
+    beneficiaryBban: string;
+    beneficiaryName: string;
+    chequeAmount: string;
+    clearingDate: string;
+    transCurrency: string;
+    remittingParticipant: string;
+    recepientParticipant: string;
+    frontImage: string | null;
+    backImage: string | null;
+  };
+}
+
 
 // Activity configuration interfaces
 export interface ActivityConfig {
@@ -91,25 +122,111 @@ export interface ActivityConfigResponse {
   message?: string;
 }
 
-// Updated function to extract relation number from URL path for both capture and update modes
+export interface BiometricParams {
+  relationNo?: string;
+  custNo?: string;
+  batch?: string;
+  mandate?: string;
+  limit?: string;
+  capturedBy?: string;
+  capturedDate?: string;
+  approvedBy?: string;
+  hostname?: string;
+  terminalIp?: string;
+}
+
+/**
+ * Parses parameters from the URL based on the strict patterns defined in .htaccess.
+ * capture-([0-9a-zA-Z]+)-([0-9a-zA-Z_-]+)-([0-9]{4}-[0-9]{2}-[0-9]{2})
+ * update-([0-9a-z]+)-([0-9a-z]+)-([0-9a-z]+)-([0-9a-zA-Z_.]+)-([0-9a-zA-Z_-]+)-([0-9]{4}-[0-9]{2}-[0-9]{2})
+ * image_approval_screen-([0-9a-zA-Z]+)-([0-9a-zA-Z]+)-([0-9a-zA-Z]+)-([0-9a-zA-Z_.]+)-([0-9a-zA-Z_-]+)-([0-9.]{7,15})
+ */
+
+const isValidDate = (dateString: string): boolean => {
+  const regEx = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateString.match(regEx)) return false;  // Invalid format
+  const d = new Date(dateString);
+  const dNum = d.getTime();
+  if (!dNum && dNum !== 0) return false; // NaN value, Invalid date
+  return d.toISOString().slice(0, 10) === dateString;
+};
+
+export const parseBiometricParams = (currentPath?: string): { action: string; params: BiometricParams } | null => {
+  const path = currentPath || window.location.pathname;
+  
+  // Capture Pattern: strict match at the end
+  const captureMatch = path.match(/\/capture-([0-9a-zA-Z]+)-([0-9a-zA-Z_-]+)-([0-9]{4}-[0-9]{2}-[0-9]{2})$/);
+  if (captureMatch) {
+    const dateStr = captureMatch[3];
+    if (!isValidDate(dateStr)) return null;
+
+    return {
+      action: 'capture',
+      params: {
+        relationNo: captureMatch[1],
+        capturedBy: captureMatch[2],
+        capturedDate: dateStr
+      }
+    };
+  }
+
+  // Update Pattern: strict match at the end
+  const updateMatch = path.match(/\/update-([0-9a-zA-Z]*)-([0-9a-zA-Z]*)-([0-9a-zA-Z]*)-([0-9a-zA-Z_.]*)-([0-9a-zA-Z_-]*)-([0-9]{4}-[0-9]{2}-[0-9]{2})$/);
+  if (updateMatch) {
+    const dateStr = updateMatch[6];
+    if (!isValidDate(dateStr)) return null;
+
+    return {
+      action: 'update',
+      params: {
+        custNo: updateMatch[1],
+        batch: updateMatch[2],
+        mandate: updateMatch[3],
+        limit: updateMatch[4],
+        capturedBy: updateMatch[5],
+        capturedDate: dateStr,
+        relationNo: updateMatch[1]
+      }
+    };
+  }
+
+  // Approval Pattern: strict match at the end
+  const approvalMatch = path.match(/\/image_approval_screen-([0-9a-zA-Z]+)-([0-9a-zA-Z]*)-([0-9a-zA-Z]+)-([0-9a-zA-Z_.]+)-([0-9a-zA-Z_-]+)-([0-9.]{7,15})$/);
+  if (approvalMatch) {
+    return {
+      action: 'approval',
+      params: {
+        relationNo: approvalMatch[1],
+        batch: approvalMatch[2],
+        custNo: approvalMatch[3],
+        approvedBy: approvalMatch[4],
+        hostname: approvalMatch[5],
+        terminalIp: approvalMatch[6]
+      }
+    };
+  }
+
+  return null;
+};
+
+// Updated function to extract relation number from URL path
 export const getRelationNumber = (): string => {
-  const path = window.location.pathname;
-  const match = path.match(/\/(capture|update)-(\d+)/);
-  return match ? match[2] : '000001'; // Default fallback
+  const parsed = parseBiometricParams();
+  return parsed?.params.relationNo || '000001';
 };
 
 // Extract customer ID from URL path like /viewimage-232
 export const getCustomerId = (): string => {
   const path = window.location.pathname;
-  const match = path.match(/\/viewimage-(\d+)/);
-  return match ? match[1] : '000001'; // Default fallback
+  const match = path.match(/\/viewimage-([a-zA-Z0-9]+)/);
+  return match ? match[1] : '000001';
 };
 
 // Extract encrypted account ID from URL path like /getimagescred-ABC123XYZ
 export const getEncryptedAccountId = (): string => {
   const path = window.location.pathname;
   const match = path.match(/\/getimagescred-([a-zA-Z0-9]+)/);
-  return match ? match[1] : 'fallback-encrypted'; // Default fallback
+  return match ? match[1] : 'fallback-encrypted';
 };
 
 // Convert image data to base64 string (remove data:image/... prefix if present)
@@ -120,15 +237,128 @@ const getBase64String = (imageData: string): string => {
   return imageData;
 };
 
+// Helper functions for Standalone Local Storage operations
+export interface StandaloneAccount {
+  accountNumber: string;
+  mandate: string;
+  accountName: string;
+}
+
+export interface StandaloneRelation {
+  accountNumber: string;
+  relationNo: string;
+  firstName: string;
+  otherName?: string;
+  surname: string;
+  amtlimit?: number;
+  signatoryLevel: string;
+  photoCaptured?: boolean;
+  signatureCaptured?: boolean;
+  idCaptured?: boolean;
+  fingerprintCaptured?: boolean;
+  isApproved?: boolean;
+  nationalId: string;
+  isTemp?: boolean;
+}
+
+export const isStandaloneRelation = (relationNo: string): boolean => {
+  const relsJson = localStorage.getItem('standalone_relations');
+  
+  if (!relsJson) return false;
+  const rels = JSON.parse(relsJson);
+  return !!rels[relationNo];
+};
+
+export const isStandaloneAccount = (accountNo: string): boolean => {
+  const accsJson = localStorage.getItem('standalone_accounts');
+  if (!accsJson) return false;
+  const accs = JSON.parse(accsJson);
+  const cleanAcc = accountNo.replace(/\D/g, '');
+  return !!(accs[accountNo] || accs[cleanAcc]);
+};
+
+export const updateRelationCaptureStatus = (
+  relationNo: string,
+  field: 'photo' | 'signature' | 'id' | 'fingerprint',
+  val: boolean
+) => {
+  const relsJson = localStorage.getItem('standalone_relations');
+  if (relsJson) {
+    const rels = JSON.parse(relsJson);
+    if (rels[relationNo]) {
+      if (field === 'photo') rels[relationNo].photoCaptured = val;
+      if (field === 'signature') rels[relationNo].signatureCaptured = val;
+      if (field === 'id') rels[relationNo].idCaptured = val;
+      if (field === 'fingerprint') rels[relationNo].fingerprintCaptured = val;
+      localStorage.setItem('standalone_relations', JSON.stringify(rels));
+    }
+  }
+};
+
+export const getStandaloneAccountDetails = (accountNumber: string) => {
+  const relsJson = localStorage.getItem('standalone_relations');
+  const accountsJson = localStorage.getItem('standalone_accounts');
+  if (accountsJson && relsJson) {
+    const accounts = JSON.parse(accountsJson);
+    const rels = JSON.parse(relsJson);
+    const rawAccount = accountNumber.replace(/\D/g, '');
+    const acc = accounts[accountNumber] || accounts[rawAccount] || Object.values(accounts).find((a: StandaloneAccount) => a.accountNumber === accountNumber || a.accountNumber.replace(/\D/g, '') === rawAccount);
+    
+    if (acc) {
+      const enq_details: EnqDetail[] = [];
+      const accRelations = (Object.values(rels) as StandaloneRelation[]).filter((r: StandaloneRelation) => r.accountNumber === acc.accountNumber);
+      
+      for (const rel of accRelations) {
+        const rId = rel.relationNo;
+        const biometricsJson = localStorage.getItem(`standalone_biometrics_${rId}`);
+        const biometrics = biometricsJson ? JSON.parse(biometricsJson) : {};
+        enq_details.push({
+          relation_no: rId,
+          pix: biometrics.photo || undefined,
+          signature: biometrics.signature || undefined,
+          fingerprint_one: biometrics.thumbprint1 || undefined,
+          fingerprint_two: biometrics.thumbprint2 || undefined,
+          limit: rel.amtlimit,
+          sign_category: rel.signatoryLevel,
+          docs: (biometrics.idFront || biometrics.idBack) ? [
+            {
+              type: 'national_id',
+              sides: {
+                front: biometrics.idFront || undefined,
+                back: biometrics.idBack || undefined
+              }
+            }
+          ] : []
+        });
+      }
+      return {
+        account_mandate: acc.mandate,
+        enq_details
+      };
+    }
+  }
+  return null;
+};
+
 // Immediate save for photo/signature captures
 export const captureBrowse = async (
   imageData: string, 
   type: number, // 1 for photo, 2 for signature
   cus_no?: string
 ): Promise<CaptureResponse> => {
+  const relationNumber = cus_no || getRelationNumber();
+  const base64Data = getBase64String(imageData);
+  
+  // Standalone: cache local data
+  const cached = localStorage.getItem(`standalone_biometrics_${relationNumber}`);
+  const bioData = cached ? JSON.parse(cached) : {};
+  if (type === 1) bioData.photo = base64Data;
+  else if (type === 2) bioData.signature = base64Data;
+  localStorage.setItem(`standalone_biometrics_${relationNumber}`, JSON.stringify(bioData));
+  
+  updateRelationCaptureStatus(relationNumber, type === 1 ? 'photo' : 'signature', true);
+
   try {
-    const relationNumber = cus_no || getRelationNumber();
-    const base64Data = getBase64String(imageData);
     const typeStr = type;
 
     const formData = new FormData();
@@ -142,7 +372,7 @@ export const captureBrowse = async (
       formData.append("image", base64Data);
     }
 
-    const response = await fetch('http://10.203.14.169/imaging/capture_browse', {
+    const response = await fetch(`${getBaseUrl()}/capture_browse`, {
       method: 'POST',
       body: formData,
     });
@@ -190,6 +420,9 @@ export const captureBrowse = async (
     };
   } catch (error) {
     console.error('Error in captureBrowse:', error);
+    if (isStandaloneRelation(relationNumber)) {
+      return { success: true, message: 'Saved locally in standalone mode' };
+    }
     return { 
       success: false, 
       message: error instanceof Error ? error.message : 'Unknown error occurred' 
@@ -197,14 +430,58 @@ export const captureBrowse = async (
   }
 };
 
+// Prefetch captured images from the server if they exist (for persistence on refresh)
+export const prefetchCapturedImages = async (relationNo: string): Promise<{ photo?: string; signature?: string }> => {
+  const result: { photo?: string; signature?: string } = {};
+  const baseUrl = `${getBaseUrl()}/captured`;
+
+  try {
+    // Check for photo
+    const photoRes = await fetch(`${baseUrl}/p${relationNo}.jpg`, { method: 'HEAD' });
+    if (photoRes.ok) {
+      const blob = await fetch(`${baseUrl}/p${relationNo}.jpg`).then(r => r.blob());
+      result.photo = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // Check for signature
+    const sigRes = await fetch(`${baseUrl}/s${relationNo}.jpg`, { method: 'HEAD' });
+    if (sigRes.ok) {
+      const blob = await fetch(`${baseUrl}/s${relationNo}.jpg`).then(r => r.blob());
+      result.signature = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to prefetch images:', error);
+  }
+
+  return result;
+};
+
 // Capture identification details
 export const captureIdentification = async (
   documents: DocumentData[],
   cus_no?: string
 ): Promise<CaptureResponse> => {
-  try {
-    const relationNumber = cus_no || getRelationNumber();
+  const relationNumber = cus_no || getRelationNumber();
+  
+  // Standalone cache
+  const cached = localStorage.getItem(`standalone_biometrics_${relationNumber}`);
+  const bioData = cached ? JSON.parse(cached) : {};
+  if (documents && documents.length > 0) {
+    if (documents[0].sides.front) bioData.idFront = getBase64String(documents[0].sides.front);
+    if (documents[0].sides.back) bioData.idBack = getBase64String(documents[0].sides.back);
+    localStorage.setItem(`standalone_biometrics_${relationNumber}`, JSON.stringify(bioData));
+    updateRelationCaptureStatus(relationNumber, 'id', true);
+  }
 
+  try {
     // Convert any base64 strings with data URL prefix to plain base64
     const processedDocuments = documents.map(doc => ({
       type: doc.type,
@@ -217,7 +494,7 @@ export const captureIdentification = async (
     const payload = { documents: processedDocuments };
 
     const response = await fetch(
-      `http://10.203.14.169/imaging/capture_id_details-${relationNumber}`,
+      `${getBaseUrl()}/capture_id_details-${relationNumber}`,
       {
         method: 'POST',
         headers: {
@@ -270,6 +547,12 @@ export const captureIdentification = async (
     };
   } catch (error) {
     console.error('Error in captureIdentification:', error);
+    if (isStandaloneRelation(relationNumber)) {
+      return {
+        success: true,
+        message: 'Saved locally in standalone mode',
+      };
+    }
     return {
       success: false,
       message:
@@ -287,31 +570,50 @@ export const saveData = async (data: {
   cus_no?: string;
   batchNumber: string;
   action?: 'add' | 'AMEND';
+  capturedBy?: string;
+  capturedDate?: string;
+  limit?: string;
+  mandate?: string;
+  signname?: string;
+  comment?: string;
 }): Promise<CaptureResponse> => {
-  try {
-    const relationNumber = data.cus_no || getRelationNumber();
-    const photoBase64 = getBase64String(data.photoData);
-    const signatureBase64 = getBase64String(data.signatureData);
+  const relationNumber = data.cus_no || getRelationNumber();
+  const photoBase64 = getBase64String(data.photoData);
+  const signatureBase64 = getBase64String(data.signatureData);
 
+  // Standalone cache
+  const cached = localStorage.getItem(`standalone_biometrics_${relationNumber}`);
+  const bioData = cached ? JSON.parse(cached) : {};
+  if (photoBase64) bioData.photo = photoBase64;
+  if (signatureBase64) bioData.signature = signatureBase64;
+  localStorage.setItem(`standalone_biometrics_${relationNumber}`, JSON.stringify(bioData));
+
+  updateRelationCaptureStatus(relationNumber, 'photo', true);
+  updateRelationCaptureStatus(relationNumber, 'signature', true);
+
+  try {
     const formData = new FormData();
     formData.append("accno", "");
-    formData.append("signname", "");
+    formData.append("signname", data.signname || "");
     formData.append("id", "");
     formData.append("expirydate", "");
     formData.append("effectivedate", "");
-    formData.append("sigcat", "");
-    formData.append("comment1", "");
-    formData.append("type", "capture");
-    formData.append("limit", "");
+    formData.append("sigcat", data.mandate || "");
+    formData.append("comment1", data.comment || "");
+    formData.append("type", data.action === 'AMEND' ? "update" : "capture");
+    formData.append("limit", data.limit || "");
     formData.append("pix", photoBase64);
     formData.append("photochange", "");
     formData.append("sigchange", signatureBase64);
     formData.append("relationid", relationNumber);
     formData.append("batchno", data.batchNumber);
-    formData.append("customerno", "");
+    formData.append("customerno", data.cus_no || "");
     formData.append("action", data.action || "add");
+    formData.append("capturedBy", data.capturedBy || "");
+    formData.append("capturedDate", data.capturedDate || "");
 
-    const response = await fetch('http://10.203.14.169/imaging/savedata', {
+    const endpoint = data.action === 'AMEND' ? 'saveupdate' : 'savedata';
+    const response = await fetch(`${getBaseUrl()}/${endpoint}`, {
       method: 'POST',
       body: formData,
     });
@@ -324,6 +626,9 @@ export const saveData = async (data: {
     return { success: true, message: result };
   } catch (error) {
     console.error('Error in saveData:', error);
+    if (isStandaloneRelation(relationNumber)) {
+      return { success: true, message: 'Saved locally in standalone mode' };
+    }
     return { 
       success: false, 
       message: error instanceof Error ? error.message : 'Unknown error occurred' 
@@ -337,6 +642,10 @@ export const updateData = async (data: {
   signatureData: string;
   cus_no?: string;
   batchNumber: string;
+  capturedBy?: string;
+  capturedDate?: string;
+  limit?: string;
+  mandate?: string;
 }): Promise<CaptureResponse> => {
   return saveData({
     ...data,
@@ -371,9 +680,18 @@ export const initFingerprint = async (): Promise<CaptureResponse> => {
 // Capture fingerprint
 // Capture thumbprint for specific thumb (1 or 2)
 export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: string): Promise<FingerprintResponse> => {
+  const relationNo = relationNumber || getRelationNumber();
+  
+  // Standalone cache with generic placeholder fingerprint
+  const cached = localStorage.getItem(`standalone_biometrics_${relationNo}`);
+  const bioData = cached ? JSON.parse(cached) : {};
+  const mockFp = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+  if (thumb === "1") bioData.thumbprint1 = mockFp;
+  if (thumb === "2") bioData.thumbprint2 = mockFp;
+  localStorage.setItem(`standalone_biometrics_${relationNo}`, JSON.stringify(bioData));
+  updateRelationCaptureStatus(relationNo, 'fingerprint', true);
+
   try {
-    const relationNo = relationNumber || getRelationNumber();
-    
     const formData = new FormData();
     formData.append('relation_no', relationNo);
     formData.append('thumbprint', thumb);  // Payload: '1' for thumbprint 1 (right), '2' for thumbprint 2 (left)
@@ -391,6 +709,13 @@ export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: strin
     return result;
   } catch (error) {
     console.error('Error capturing thumbprint:', error);
+    if (isStandaloneRelation(relationNo)) {
+      return {
+        response_code: 0,
+        response_msg: 'Captured locally in standalone mode',
+        image: mockFp
+      };
+    }
     return {
       response_code: -1,
       response_msg: error instanceof Error ? error.message : 'Failed to capture thumbprint'
@@ -400,14 +725,73 @@ export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: strin
 
 // Search for customer images (approval phase)
 export const searchImages = async (relationno: string): Promise<SearchImagesResponse> => {
+  
   try {
-    const response = await fetch(`http://10.203.14.169/imaging/get_temp_image-${relationno}`, {
+    
+    if (isStandaloneRelation(relationno)) {
+      const relsJson = localStorage.getItem('standalone_relations');
+      const accountsJson = localStorage.getItem('standalone_accounts');
+      if (relsJson && accountsJson) {
+        const rels = JSON.parse(relsJson);
+        const accounts = JSON.parse(accountsJson);
+        const rel = rels[relationno];
+        if (rel) {
+          const acc = accounts[rel.accountNumber];
+          const biometricsJson = localStorage.getItem(`standalone_biometrics_${relationno}`);
+          const biometrics = biometricsJson ? JSON.parse(biometricsJson) : {};
+          
+          
+          const payload: Record<string, unknown> = {
+            photo: biometrics.photo || undefined,
+            accsign: biometrics.signature || undefined,
+            thumbprint1: biometrics.thumbprint1 || undefined,
+            thumbprint2: biometrics.thumbprint2 || undefined,
+            limit: rel.amtlimit?.toString(),
+            mandate: acc?.mandate,
+            documents: (biometrics.idFront || biometrics.idBack) ? [
+              {
+                type: 'national_id',
+                sides: {
+                  front: biometrics.idFront || undefined,
+                  back: biometrics.idBack || undefined
+                }
+              }
+            ] : []
+          };
+          
+          const emptyBucket = {
+            photo: '',
+            accsign: '',
+            thumbprint1: '',
+            thumbprint2: '',
+            documents: [] as DocumentData[],
+            limit: '',
+            mandate: ''
+          };
+
+          const hasData = payload.photo || payload.accsign || payload.thumbprint1 || payload.thumbprint2 || (payload.documents as DocumentData[])?.length;
+          if (hasData) {
+            return {
+              status: 'success',
+              message: 'Images retrieved from standalone store',
+              data: {
+                name: `${rel.firstName} ${rel.otherName || ''} ${rel.surname}`.trim(),
+                relation_no: relationno,
+                approved: rel.isApproved ? payload : emptyBucket,
+                unapproved: !rel.isApproved ? payload : emptyBucket
+              }
+            };
+          }
+        }
+      }
+    }
+   
+    const response = await fetch(`${getBaseUrl()}/get_temp_image-${relationno}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
       },
     });
-
     if (!response.ok) {
       if (response.status === 404) {
         return {
@@ -436,7 +820,50 @@ export const searchImages = async (relationno: string): Promise<SearchImagesResp
 // Fetch customer images for enquiry phase
 export const enquiryImages = async (customerId: string): Promise<EnquiryImagesResponse> => {
   try {
-    const response = await fetch(`http://10.203.14.169/imaging/api/enquiry-${customerId}`, {
+    if (isStandaloneRelation(customerId)) {
+      const relsJson = localStorage.getItem('standalone_relations');
+      const accountsJson = localStorage.getItem('standalone_accounts');
+      if (relsJson && accountsJson) {
+        const rels = JSON.parse(relsJson);
+        const accounts = JSON.parse(accountsJson);
+        const rel = rels[customerId];
+        if (rel) {
+          const acc = accounts[rel.accountNumber];
+          const biometricsJson = localStorage.getItem(`standalone_biometrics_${customerId}`);
+          const biometrics = biometricsJson ? JSON.parse(biometricsJson) : {};
+          
+          return {
+            status: 'success',
+            message: 'Images retrieved from standalone store',
+            data: {
+              account_mandate: acc?.mandate || 'SOLE SIGNATORY',
+              enq_details: [
+                {
+                  relation_no: customerId,
+                  pix: biometrics.photo || undefined,
+                  signature: biometrics.signature || undefined,
+                  fingerprint_one: biometrics.thumbprint1 || undefined,
+                  fingerprint_two: biometrics.thumbprint2 || undefined,
+                  limit: rel.amtlimit,
+                  sign_category: rel.signatoryLevel,
+                  docs: (biometrics.idFront || biometrics.idBack) ? [
+                    {
+                      type: 'national_id',
+                      sides: {
+                        front: biometrics.idFront || undefined,
+                        back: biometrics.idBack || undefined
+                      }
+                    }
+                  ] : []
+                }
+              ]
+            }
+          };
+        }
+      }
+    }
+
+    const response = await fetch(`${getBaseUrl()}/api/view_relation_details-${customerId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -471,7 +898,16 @@ export const enquiryImages = async (customerId: string): Promise<EnquiryImagesRe
 // NEW: Fetch images by plain account number (non-encrypted) via cash_enquiry endpoint
 export const getImagesByAccount = async (account: string): Promise<EnquiryImagesResponse> => {
   try {
-    const response = await fetch(`http://10.203.14.169/imaging/api/cash_enquiry-${account}`, {
+    const standaloneDetails = getStandaloneAccountDetails(account);
+    if (standaloneDetails) {
+      return {
+        status: 'success',
+        message: 'Images retrieved from standalone store',
+        data: standaloneDetails
+      };
+    }
+
+    const response = await fetch(`${getBaseUrl()}/api/cash_enquiry-${account}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -506,7 +942,16 @@ export const getImagesByAccount = async (account: string): Promise<EnquiryImages
 // Fetch relation details from encrypted account for new phase
 export const viewRelationDetailsFromAccount = async (encryptedAcctNo: string): Promise<EnquiryImagesResponse> => {
   try {
-    const response = await fetch(`http://10.203.14.169/imaging/api/view_relation_details-${encryptedAcctNo}`, {
+    const standaloneDetails = getStandaloneAccountDetails(encryptedAcctNo);
+    if (standaloneDetails) {
+      return {
+        status: 'success',
+        message: 'Images retrieved from standalone store',
+        data: standaloneDetails
+      };
+    }
+
+    const response = await fetch(`${getBaseUrl()}/api/enquiry-${encryptedAcctNo}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -538,6 +983,137 @@ export const viewRelationDetailsFromAccount = async (encryptedAcctNo: string): P
   }
 };
 
+// NEW: Fetch cheque details by parsing the HTML from the PHP view page
+export const getChequeDetails = async (chequeNumber: string): Promise<ChequeDetailResponse> => {
+  try {
+    // We use a Vite proxy just for localhost because the original view_cheques.php lacks CORS headers
+    // In production, we assume it's running behind the same origin or intranet without CORS enforcement
+    const response = await fetch(`${getBaseUrl()}/view_cheques-${chequeNumber}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html',
+      },
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // In view_cheques.php, the Cheque details are laid out in a table format:
+    // <tr><td>Field Name</td>...<td>:</td><td>Value</td></tr>
+    // We search the document for the td matching the label, then traverse to find the corresponding value td.
+    const tds = Array.from(doc.querySelectorAll('td'));
+    const extractFieldValue = (label: string): string => {
+        const exactMatchLabel = `${label}`;
+        const labelTd = tds.find(td => td.textContent?.trim() === exactMatchLabel);
+        if (labelTd) {
+            // It's usually Label -> div spacer -> ':' -> value
+            // Safe traversal: find next sibling td that contains text content that isn't ':' or empty spaces
+            let next = labelTd.nextElementSibling;
+            
+            // Advance through spacer td and colon td
+            if (next && next.querySelector('div')) {
+                next = next.nextElementSibling; 
+            }
+            if (next && next.textContent?.trim() === ':') {
+                next = next.nextElementSibling;
+            }
+            // If the structure matches:
+            if (next) {
+                return next.textContent?.trim() || '';
+            }
+        }
+        return '';
+    };
+
+    // Extract images (src="data:image/...")
+    const images = Array.from(doc.querySelectorAll('img[src^="data:image"]')) as HTMLImageElement[];
+    const frontImage = images.length > 0 ? images[0].src : null;
+    const backImage = images.length > 1 ? images[1].src : null;
+
+    // Check if the page didn't actually return a cheque (e.g., fields are empty and no images).
+    const chequeNo = extractFieldValue('Cheque No');
+    if (!chequeNo && !frontImage) {
+        return {
+          status: 'error',
+          message: 'Cheque record not found.',
+        };
+    }
+
+    return {
+      status: 'success',
+      message: 'Cheque details retrieved successfully',
+      data: {
+        instrumentCode: extractFieldValue('Instrument Code'),
+        rejectionReason: extractFieldValue('Rejection Reason'),
+        chequeNo: extractFieldValue('Cheque No'),
+        chequeStatus: extractFieldValue('Cheque Status'),
+        payerBban: extractFieldValue('Payer BBAN'),
+        payerName: extractFieldValue('Payer Name'),
+        beneficiaryBban: extractFieldValue('Beneficiary BBAN'),
+        beneficiaryName: extractFieldValue('Beneficiary Name'),
+        chequeAmount: extractFieldValue('Cheque Amount'),
+        clearingDate: extractFieldValue('Clearing Date'),
+        transCurrency: extractFieldValue('Trans_Currency') || extractFieldValue('Trans Currency') || '010',
+        remittingParticipant: extractFieldValue('Remitting_Participant'),
+        recepientParticipant: extractFieldValue('Recepient_Participant'),
+        frontImage,
+        backImage
+      }
+    };
+
+  } catch (error) {
+    console.error('Error in getChequeDetails:', error);
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to retrieve cheque details'
+    };
+  }
+};
+
+export interface AccountSignatureResponse {
+  approved: Array<{
+    photo: string;
+    signature: string;
+  }>;
+}
+
+// NEW: Fetch account signature by account number (Core Protocol - No Decryption)
+export const getAccountSignatures = async (accountNumber: string): Promise<EnquiryData | null> => {
+  try {
+    const standaloneDetails = getStandaloneAccountDetails(accountNumber);
+    if (standaloneDetails) {
+      return standaloneDetails;
+    }
+
+    const rawAccount = accountNumber.replace(/\D/g, '');
+    console.log(`[Protocol] Fetching signatures for sanitized account: ${rawAccount} (raw input: "${accountNumber}")`);
+    const response = await fetch(`${getBaseUrl()}/api/core_enquiry-${rawAccount}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        // System Security Headers for Core Access
+        'X-API-KEY': '20171411891',
+        'X-API-SECRET': '141116517P'
+      },
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error in getAccountSignatures:', error);
+    return null;
+  }
+};
+
 // Approve customer images - COMPREHENSIVE VERSION (handles both JSON and plain text)
 export const approveCustomerImages = async (params: {
   relationno: string;
@@ -546,14 +1122,34 @@ export const approveCustomerImages = async (params: {
   approved_by: string;
   hostname: string;
   terminal_ip: string;
+  posting_date?: string;
 }): Promise<ApprovalResponse> => {
   try {
-    const { relationno, batch, custno, approved_by, hostname, terminal_ip } = params;
+    const { relationno, batch, custno, approved_by, hostname, terminal_ip, posting_date } = params;
     
-    const response = await fetch(
-      `http://10.203.14.169/imaging/api/approve_image-${relationno}-${batch}-${custno}-${approved_by}-${hostname}-${terminal_ip}`,
-      {
-        method: 'POST',
+    if (isStandaloneRelation(relationno)) {
+      const relsJson = localStorage.getItem('standalone_relations');
+      if (relsJson) {
+        const rels = JSON.parse(relsJson);
+        if (rels[relationno]) {
+          rels[relationno].isApproved = true;
+          localStorage.setItem('standalone_relations', JSON.stringify(rels));
+        }
+      }
+      return {
+        status: 'success',
+        message: 'Image approved successfully (standalone)',
+        code: 0
+      };
+    }
+
+    let url = `${getBaseUrl()}/api/approve_image-${relationno}-${batch}-${custno}-${approved_by}-${hostname}-${terminal_ip}`;
+    if (posting_date) {
+      url += `-${posting_date}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -643,6 +1239,23 @@ export const approveCustomerImages = async (params: {
 // Simulate rejection (placeholder)
 export const rejectCustomerImages = async (relationno: string, reason: string, imageTypes: string[]): Promise<ApprovalResponse> => {
   try {
+    if (isStandaloneRelation(relationno)) {
+      const relsJson = localStorage.getItem('standalone_relations');
+      if (relsJson) {
+        const rels = JSON.parse(relsJson);
+        if (rels[relationno]) {
+          rels[relationno].isApproved = false;
+          if (imageTypes.includes('photo')) rels[relationno].photoCaptured = false;
+          if (imageTypes.includes('signature')) rels[relationno].signatureCaptured = false;
+          localStorage.setItem('standalone_relations', JSON.stringify(rels));
+        }
+      }
+      return {
+        status: 'success',
+        message: 'Image rejected successfully (standalone)'
+      };
+    }
+
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     return {
@@ -666,48 +1279,25 @@ export const getApprovalParams = (): {
   hostname?: string;
   terminal_ip?: string;
 } => {
-  const urlParams = new URLSearchParams(window.location.search);
-  let relationno = urlParams.get('relationno');
-  let batch = urlParams.get('batch');
-  let custno = urlParams.get('custno');
-  let approved_by = urlParams.get('approved_by');
-  let hostname = urlParams.get('hostname');
-  let terminal_ip = urlParams.get('terminal_ip');
-
-  if (!relationno) {
-    // Fallback to path parsing for new URL format
-    const path = window.location.pathname;
-    const pathMatch = path.match(/\/image_approval_screen-(.*)$/);
-    if (pathMatch) {
-      const remaining = pathMatch[1].split('-');
-      if (remaining.length >= 6) {
-        relationno = remaining[0];
-        batch = remaining[1];
-        custno = remaining[2];
-        approved_by = remaining[3];
-        const hostnameStart = 4;
-        terminal_ip = remaining[remaining.length - 1];
-        const hostnameParts = remaining.slice(hostnameStart, -1);
-        hostname = hostnameParts.join('-');
-      }
-    }
+  const parsed = parseBiometricParams();
+  if (parsed && parsed.action === 'approval') {
+    return {
+      relationno: parsed.params.relationNo,
+      batch: parsed.params.batch,
+      custno: parsed.params.custNo,
+      approved_by: parsed.params.approvedBy,
+      hostname: parsed.params.hostname,
+      terminal_ip: parsed.params.terminalIp,
+    };
   }
-
-  return {
-    relationno: relationno || undefined,
-    batch: batch || undefined,
-    custno: custno || undefined,
-    approved_by: approved_by || undefined,
-    hostname: hostname || undefined,
-    terminal_ip: terminal_ip || undefined,
-  };
+  return {};
 };
 
 
 // === NEW: Fetch activity configuration to control enabled steps ===
 export const fetchActivityConfig = async (): Promise<ActivityConfigResponse> => {
   try {
-    const response = await fetch('http://10.203.14.169/imaging/api/activities', {
+    const response = await fetch(`${getBaseUrl()}/api/activities`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
@@ -740,7 +1330,7 @@ const getDefaultActivityConfig = (): ActivityConfig => ({
 
 export const saveActivityConfig = async (config: ActivityConfig): Promise<ActivityConfigResponse> => {
   try {
-    const response = await fetch('http://10.203.14.169/imaging/api/activities', {
+    const response = await fetch(`${getBaseUrl()}/api/activities`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -781,5 +1371,111 @@ export const saveActivityConfig = async (config: ActivityConfig): Promise<Activi
       success: false,
       message: error instanceof Error ? error.message : 'Failed to save configuration',
     };
+  }
+};
+
+export interface SignatureVerificationResponse {
+  score: number;
+  is_match: boolean;
+  status: string;
+  message?: string;
+}
+
+// NEW: Fetch the current posting date from the legacy system
+export const getPostingDate = async (): Promise<string> => {
+  const relNo = getRelationNumber();
+  if (isStandaloneRelation(relNo)) {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  try {
+    const response = await fetch(`${getBaseUrl()}/api/get_posting_date`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const result = await response.json();
+    return result.posting_date || new Date().toISOString().split('T')[0];
+  } catch (error) {
+    console.error('Failed to fetch posting date:', error);
+    return new Date().toISOString().split('T')[0]; // Fallback
+  }
+};
+
+/**
+ * AI SIGNATURE VERIFICATION
+ * Connects to the local Python backend (port 8000) to compare extracted cheque
+ * signature against the mandate signature.
+ */
+export const verifySignature = async (
+    chequeImage: string, 
+    mandateImage: string,
+    roi?: { x: number, y: number, w: number, h: number }
+): Promise<SignatureVerificationResponse | null> => {
+    try {
+        const response = await fetch('http://127.0.0.1:8130/verify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                cheque_image: chequeImage,
+                mandate_image: mandateImage,
+                roi: roi // Pass the crop coordinates
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`AI Engine Error: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Signature verification connection failed:', error);
+        return null;
+    }
+};
+
+export interface ChequeMandateResponse {
+  success: boolean;
+  output_code: string;
+  output_msg: string;
+  output: unknown;
+}
+
+export const verifyChequeMandate = async (
+  chequeNo: string,
+  acctNo: string,
+  currency: string,
+  chk: 'Y' | 'N',
+  relationNo: string,
+  postedBy: string = 'admin'
+): Promise<ChequeMandateResponse> => {
+  try {
+    const rawAccount = acctNo.replace(/\D/g, '');
+    console.log(`[Protocol] Verifying cheque mandate for sanitized account: ${rawAccount} (raw input: "${acctNo}")`);
+    // Send a request to cheque_mandates-{cheque_no}-{acct_no}-{currency}-{posted_by}-{chk} matching the .htaccess rewrite rule
+    const response = await fetch(`${getBaseUrl()}/api/cheque_mandates-${chequeNo}-${rawAccount}-${currency}-${postedBy}-${chk}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': '20171411891',
+        'x-api-secret': '141116517P'
+      },
+      body: JSON.stringify({
+        relation_no: relationNo
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error in verifyChequeMandate:', error);
+    throw error;
   }
 };

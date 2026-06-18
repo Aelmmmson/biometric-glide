@@ -4,7 +4,7 @@ import { PhotoSignature } from './PhotoSignature';
 import { Identification } from './Identification';
 import { Fingerprint } from './Fingerprint';
 import { Review } from './Review';
-import { useBiometric } from '@/contexts/BiometricContext';
+import { useBiometric } from '@/hooks/useBiometric';
 import { fetchActivityConfig } from '@/services/api';
 import { useEffect, useMemo } from 'react';
 
@@ -54,16 +54,6 @@ const Index = () => {
     dispatch({ type: 'SET_STEP', step: next });
   };
 
-  const CurrentStep = () => {
-    if (state.currentStep === 1) return <PhotoSignature onNext={goToNextStep} />;
-    if (state.currentStep === 2 && state.activityConfig?.identification.status)
-      return <Identification onNext={goToNextStep} />;
-    if (state.currentStep === 3 && state.activityConfig?.fingerprint.status)
-      return <Fingerprint onNext={goToNextStep} />;
-    if (state.currentStep === 4) return <Review />;
-
-    return <div className="text-center py-10">Loading step...</div>;
-  };
 
   const completedSteps = useMemo(() => {
     const c: number[] = [];
@@ -103,7 +93,29 @@ const Index = () => {
 
           <div className="lg:col-span-3">
             <AnimatePresence mode="wait">
-              <CurrentStep key={state.currentStep} />
+              <motion.div
+                key={state.currentStep}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {state.currentStep === 1 && (
+                  <PhotoSignature onNext={goToNextStep} />
+                )}
+                {state.currentStep === 2 && state.activityConfig?.identification.status && (
+                  <Identification onNext={goToNextStep} />
+                )}
+                {state.currentStep === 3 && state.activityConfig?.fingerprint.status && (
+                  <Fingerprint onNext={goToNextStep} />
+                )}
+                {state.currentStep === 4 && (
+                  <Review />
+                )}
+                {state.currentStep > 4 || (state.currentStep > 1 && !state.activityConfig) ? (
+                  <div className="text-center py-10">Loading step...</div>
+                ) : null}
+              </motion.div>
             </AnimatePresence>
           </div>
         </div>

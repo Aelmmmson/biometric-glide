@@ -14,6 +14,7 @@ import {
   approveCustomerImages,
   rejectCustomerImages,
   getApprovalParams,
+  getPostingDate,
   SearchImagesResponse,
   DocumentData
 } from '@/services/api';
@@ -52,6 +53,23 @@ type StepImageConfig = {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 };
 
+const getSafeImageValue = (
+  data: {
+    photo?: string;
+    accsign?: string;
+    thumbprint1?: string;
+    thumbprint2?: string;
+  } | undefined,
+  key: string
+): string => {
+  if (!data) return '';
+  if (key === 'photo') return data.photo || '';
+  if (key === 'accsign') return data.accsign || '';
+  if (key === 'thumbprint1') return data.thumbprint1 || '';
+  if (key === 'thumbprint2') return data.thumbprint2 || '';
+  return '';
+};
+
 const Approval = () => {
   const { toast } = useToast();
   const [searchResults, setSearchResults] = useState<SearchImagesResponse | null>(null);
@@ -59,8 +77,13 @@ const Approval = () => {
   const [searchRelationNo, setSearchRelationNo] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [approvalParams, setApprovalParams] = useState<ReturnType<typeof getApprovalParams>>({});
+  const [postingDate, setPostingDate] = useState<string>('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    getPostingDate().then(setPostingDate).catch(console.error);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -143,9 +166,11 @@ const Approval = () => {
     if (!searchResults?.data?.unapproved) return;
 
     const unapproved = searchResults.data.unapproved;
-    const nonDocTypes = ['photo', 'accsign', 'thumbprint1', 'thumbprint2'].filter(
-      key => unapproved[key] && unapproved[key].trim() !== ''
-    );
+    const nonDocTypes: string[] = [];
+    if (unapproved.photo && unapproved.photo.trim() !== '') nonDocTypes.push('photo');
+    if (unapproved.accsign && unapproved.accsign.trim() !== '') nonDocTypes.push('accsign');
+    if (unapproved.thumbprint1 && unapproved.thumbprint1.trim() !== '') nonDocTypes.push('thumbprint1');
+    if (unapproved.thumbprint2 && unapproved.thumbprint2.trim() !== '') nonDocTypes.push('thumbprint2');
     const docTypes = unapproved.documents?.map((d: DocumentData) => d.type) ?? [];
     const imageTypes = [...nonDocTypes, ...docTypes];
 
@@ -159,6 +184,7 @@ const Approval = () => {
         approved_by: approvalParams.approved_by,
         hostname: approvalParams.hostname,
         terminal_ip: approvalParams.terminal_ip,
+        posting_date: postingDate,
         imageTypes,
       } as RequiredApprovalParams);
 
@@ -199,9 +225,11 @@ const Approval = () => {
     if (!searchResults?.data?.unapproved) return;
 
     const unapproved = searchResults.data.unapproved;
-    const nonDocTypes = ['photo', 'accsign', 'thumbprint1', 'thumbprint2'].filter(
-      key => unapproved[key] && unapproved[key].trim() !== ''
-    );
+    const nonDocTypes: string[] = [];
+    if (unapproved.photo && unapproved.photo.trim() !== '') nonDocTypes.push('photo');
+    if (unapproved.accsign && unapproved.accsign.trim() !== '') nonDocTypes.push('accsign');
+    if (unapproved.thumbprint1 && unapproved.thumbprint1.trim() !== '') nonDocTypes.push('thumbprint1');
+    if (unapproved.thumbprint2 && unapproved.thumbprint2.trim() !== '') nonDocTypes.push('thumbprint2');
     const docTypes = unapproved.documents?.map((d: DocumentData) => d.type) ?? [];
     const imageTypes = [...nonDocTypes, ...docTypes];
 
@@ -316,7 +344,7 @@ const Approval = () => {
     const data = section === 'approved' ? searchResults.data.approved : searchResults.data.unapproved;
     const allConfigs = getAllImageConfigs(searchResults.data);
 
-    const validConfigs = allConfigs.filter(config => data[config.key]?.trim() !== '');
+    const validConfigs = allConfigs.filter(config => getSafeImageValue(data, config.key).trim() !== '');
 
     if (validConfigs.length === 0) return null;
 
@@ -327,7 +355,7 @@ const Approval = () => {
             key={config.key}
             title={config.title}
             icon={config.icon}
-            image={data[config.key]}
+            image={getSafeImageValue(data, config.key)}
             type={section}
           />
         ))}
@@ -336,6 +364,7 @@ const Approval = () => {
   };
 
   const renderDocImages = (section: 'approved' | 'unapproved') => {
+    if (!searchResults?.data) return null;
     const data = section === 'approved' ? searchResults.data.approved : searchResults.data.unapproved;
     const documents = data?.documents || [];
 
@@ -434,9 +463,11 @@ const Approval = () => {
     if (!searchResults?.data?.unapproved) return null;
 
     const unapproved = searchResults.data.unapproved;
-    const hasNonDoc = ['photo', 'accsign', 'thumbprint1', 'thumbprint2'].some(
-      key => unapproved[key] && unapproved[key].trim() !== ''
-    );
+    const hasNonDoc =
+      (unapproved.photo && unapproved.photo.trim() !== '') ||
+      (unapproved.accsign && unapproved.accsign.trim() !== '') ||
+      (unapproved.thumbprint1 && unapproved.thumbprint1.trim() !== '') ||
+      (unapproved.thumbprint2 && unapproved.thumbprint2.trim() !== '');
     const hasDocs = unapproved.documents?.some((d: DocumentData) => 
       d.sides.front?.trim() !== '' || d.sides.back?.trim() !== ''
     ) ?? false;
@@ -445,51 +476,51 @@ const Approval = () => {
 
     if (allUnapprovedEmpty) return null;
 
-    return (
-      <div className="flex justify-center gap-4 my-4">
-        <Button
-          size="lg"
-          onClick={handleApprove}
-          className="bg-green-600 hover:bg-green-700"
-          disabled={allUnapprovedEmpty}
-        >
-          <CheckCircle className="w-5 h-5 mr-2" />
-          Approve All Pending
-        </Button>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-red-300 text-red-700 hover:bg-red-50"
-              disabled={allUnapprovedEmpty}
-            >
-              <XCircle className="w-5 h-5 mr-2" />
-              Reject
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogTitle>Reject Unapproved Images</DialogTitle>
-            <div className="space-y-4">
-              <Textarea
-                placeholder="Enter reason for rejection..."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                className="min-h-32"
-              />
-              <div className="flex gap-3 justify-end">
-                <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button onClick={handleReject} variant="destructive">
-                  Confirm Rejection
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
+    // return (
+    //   <div className="flex justify-center gap-4 my-4">
+    //     <Button
+    //       size="lg"
+    //       onClick={handleApprove}
+    //       className="bg-green-600 hover:bg-green-700"
+    //       disabled={allUnapprovedEmpty}
+    //     >
+    //       <CheckCircle className="w-5 h-5 mr-2" />
+    //       Approve All Pending
+    //     </Button>
+    //     <Dialog>
+    //       <DialogTrigger asChild>
+    //         <Button
+    //           size="lg"
+    //           variant="outline"
+    //           className="border-red-300 text-red-700 hover:bg-red-50"
+    //           disabled={allUnapprovedEmpty}
+    //         >
+    //           <XCircle className="w-5 h-5 mr-2" />
+    //           Reject
+    //         </Button>
+    //       </DialogTrigger>
+    //       <DialogContent>
+    //         <DialogTitle>Reject Unapproved Images</DialogTitle>
+    //         <div className="space-y-4">
+    //           <Textarea
+    //             placeholder="Enter reason for rejection..."
+    //             value={rejectReason}
+    //             onChange={(e) => setRejectReason(e.target.value)}
+    //             className="min-h-32"
+    //           />
+    //           <div className="flex gap-3 justify-end">
+    //             <DialogClose asChild>
+    //               <Button variant="outline">Cancel</Button>
+    //             </DialogClose>
+    //             <Button onClick={handleReject} variant="destructive">
+    //               Confirm Rejection
+    //             </Button>
+    //           </div>
+    //         </div>
+    //       </DialogContent>
+    //     </Dialog>
+    //   </div>
+    // );
   };
 
   return (
@@ -596,8 +627,8 @@ const Approval = () => {
                   <>
                     {renderActionButtons()}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-                      {renderSection('approved', 'Approved Images', CheckCircle, searchResults.data.approved.limit || '', searchResults.data.approved.mandate || '')}
-                      {renderSection('unapproved', 'Pending Review', AlertCircle, searchResults.data.unapproved.limit || '', searchResults.data.unapproved.mandate || '')}
+                      {renderSection('approved', 'Approved Images', CheckCircle, searchResults.data.approved?.limit || '', searchResults.data.approved?.mandate || '')}
+                      {renderSection('unapproved', 'Pending Review', AlertCircle, searchResults.data.unapproved?.limit || '', searchResults.data.unapproved?.mandate || '')}
                     </div>
                   </>
                 );

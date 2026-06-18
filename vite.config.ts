@@ -10,6 +10,13 @@ export default defineConfig(({ mode }) => ({
     port: 8089,
     // ADD THIS LINE - crucial for client-side routing
     historyApiFallback: true,
+    proxy: {
+      '/legacy-imaging': {
+        target: 'http://10.203.14.169',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/legacy-imaging/, '/imaging')
+      }
+    }
   },
   plugins: [
     react(),

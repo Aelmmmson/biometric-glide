@@ -12,7 +12,7 @@ import {
 import Webcam from 'react-webcam';
 import { StepCard } from '@/components/StepCard';
 import { Button } from '@/components/ui/button';
-import { useBiometric } from '@/contexts/BiometricContext';
+import { useBiometric } from '@/hooks/useBiometric';
 import { toast } from '@/hooks/use-toast';
 import {
   listener,
@@ -28,6 +28,8 @@ import {
   getRelationNumber,
   searchImages,
   SearchImagesResponse,
+  prefetchCapturedImages,
+  type StandaloneRelation,
 } from '@/services/api';
 import { ImageEditor } from '@/components/ImageEditor';
 
@@ -54,6 +56,30 @@ export function PhotoSignature({
   const [isAsideOpen, setIsAsideOpen] = useState(false);
   const [images, setImages] = useState<SearchImagesResponse | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
+
+  const openImageViewer = (imgSrc: string) => {
+    setZoomLevel(1.0);
+    setViewingImage(imgSrc);
+  };
+
+  const [relationDetails, setRelationDetails] = useState<StandaloneRelation | null>(null);
+
+  useEffect(() => {
+    const rNo = getRelationNumber();
+    if (rNo) {
+      const storedRels = localStorage.getItem('standalone_relations');
+      if (storedRels) {
+        const rels = JSON.parse(storedRels);
+        if (rels[rNo]) {
+          setRelationDetails(rels[rNo]);
+        }
+      }
+    }
+  }, [state.params]);
+
+  const [isPhotoChanged, setIsPhotoChanged] = useState(false);
+  const [isSignatureChanged, setIsSignatureChanged] = useState(false);
   const hasAutoClosed = useRef(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -83,6 +109,24 @@ export function PhotoSignature({
     }
   }, [mode]);
 
+  const hasPrefetched = useRef(false);
+
+  // Persistence logic for refresh
+  useEffect(() => {
+    const relationNo = getRelationNumber();
+    if (relationNo && relationNo !== '000001' && !hasPrefetched.current) {
+      hasPrefetched.current = true;
+      prefetchCapturedImages(relationNo).then(prefetch => {
+        if (prefetch.photo && !state.data.photo) {
+          dispatch({ type: 'SET_PHOTO', photo: prefetch.photo });
+        }
+        if (prefetch.signature && !state.data.signature) {
+          dispatch({ type: 'SET_SIGNATURE', signature: prefetch.signature });
+        }
+      }).catch(console.error);
+    }
+  }, [state.data.photo, state.data.signature, dispatch]);
+
   useEffect(() => {
     if (mode === 'update' && images && isAsideOpen && !hasAutoClosed.current) {
       hasAutoClosed.current = true;
@@ -96,6 +140,7 @@ export function PhotoSignature({
     if (!screenshot) return;
 
     dispatch({ type: 'SET_PHOTO', photo: screenshot });
+    setIsPhotoChanged(true);
 
     const result = await captureBrowse(screenshot, 1);
     if (result.success) {
@@ -118,6 +163,7 @@ export function PhotoSignature({
     reader.onload = async (e) => {
       const base64Data = e.target?.result as string;
       dispatch({ type: 'SET_PHOTO', photo: base64Data });
+      setIsPhotoChanged(true);
 
       const result = await captureBrowse(base64Data, 1);
       if (result.success) {
@@ -137,6 +183,7 @@ export function PhotoSignature({
     reader.onload = async (e) => {
       const base64Data = e.target?.result as string;
       dispatch({ type: 'SET_SIGNATURE', signature: base64Data });
+      setIsSignatureChanged(true);
 
       const result = await captureBrowse(base64Data, 2);
       if (result.success) {
@@ -154,6 +201,7 @@ export function PhotoSignature({
     image.src = base64Data;
     setSigCaptured({ image, sig });
     dispatch({ type: 'SET_SIGNATURE', signature: base64Data });
+    setIsSignatureChanged(true);
     stopTablet();
 
     const result = await captureBrowse(base64Data, 2);
@@ -167,6 +215,7 @@ export function PhotoSignature({
   const clearSignature = () => {
     setSigCaptured(null);
     dispatch({ type: 'SET_SIGNATURE', signature: null });
+    setIsSignatureChanged(true);
     ClearTablet();
     LcdRefresh(0, 0, 0, 240, 64);
     stopTablet();
@@ -174,6 +223,7 @@ export function PhotoSignature({
 
   const handleClearPhoto = () => {
     dispatch({ type: 'SET_PHOTO', photo: null });
+    setIsPhotoChanged(true);
   };
 
   const handleDownload = () => {
@@ -192,10 +242,17 @@ export function PhotoSignature({
 
     try {
       const submitFn = mode === 'update' ? updateData : saveData;
+      const { params } = state;
+      
       const result = await submitFn({
         photoData: state.data.photo!,
         signatureData: state.data.signature!,
-        batchNumber: 'TEMP',
+        cus_no: params.relationNo || params.custNo,
+        batchNumber: params.batch || 'TEMP',
+        capturedBy: params.capturedBy,
+        capturedDate: params.capturedDate,
+        limit: params.limit,
+        mandate: params.mandate
       });
 
       if (result.success) {
@@ -225,7 +282,7 @@ export function PhotoSignature({
     }
   };
 
-  const canSubmit = !!state.data.photo && !!state.data.signature;
+  const canSubmit = !!state.data.photo && !!state.data.signature && (isPhotoChanged || isSignatureChanged);
 
   const initializeSigWeb = () => {
     const extendedWindow = window as unknown as ExtendedWindow;
@@ -257,180 +314,286 @@ export function PhotoSignature({
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="flex justify-between items-center mb-1">
-          <h2 className="text-2xl font-bold">
-            {mode === 'update' ? 'Update Photo & Signature' : 'Photo & Signature'}
-          </h2>
-          {mode === 'update' && !isAsideOpen && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAsideOpen(true)}
-              className="flex items-center gap-1 h-8 px-3"
-            >
-              <ImageIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Images</span>
-            </Button>
-          )}
-        </div>
-        <p className="text-muted-foreground mb-6">
-          {mode === 'update'
-            ? 'Update your photo and signature.'
-            : 'Capture or upload your photo and signature.'}
-        </p>
+        <div className={`transition-all duration-300 ${isAsideOpen ? 'md:mr-48' : ''} mr-0`}>
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-center mb-1">
+                <h2 className="text-2xl font-bold">
+                  {mode === 'update' ? 'Update Photo & Signature' : 'Photo & Signature'}
+                </h2>
+                {mode === 'update' && !isAsideOpen && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAsideOpen(true)}
+                    className="flex items-center gap-1 h-8 px-3"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Images</span>
+                  </Button>
+                )}
+              </div>
+              <p className="text-muted-foreground">
+                {mode === 'update'
+                  ? 'Update your photo and signature.'
+                  : 'Capture or upload your photo and signature.'}
+              </p>
+            </div>
 
-        {mode === 'update' && isAsideOpen && images && (
-                  <motion.aside
-                    initial={{ x: 320 }}
-                    animate={{ x: 0 }}
-                    exit={{ x: 320 }}
-                    transition={{ duration: 0.3 }}
-                    className="fixed md:top-12 top-[4.5rem] md:right-14 right-0 md:h-[calc(98vh-6rem)] h-[calc(98vh-4.5rem)] md:w-48 w-full bg-background border border-border rounded-lg md:rounded-l-lg shadow-lg p-4 overflow-auto z-50"
-                  >
-                    <div className="flex justify-between items-center mb-14 sticky top-3 bg-background pb-2">
-                      <h3 className="text-base font-semibold">Customer Images</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsAsideOpen(false)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X className="w-4 h-4 bg-blue-50 rounded-full p-1" />
-                      </Button>
-                    </div>
-                    {images.status !== 'success' || !images.data ? (
-                      <p className="text-muted-foreground text-sm">No images available</p>
-                    ) : (
-                      <div className="space-y-14">
-                        <div>
-                          <h4 className="font-semibold mb-1 text-sm uppercase tracking-wide text-muted-foreground">Unapproved</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {images.data.unapproved?.photo && getImageSrc(images.data.unapproved.photo) && (
-                              <div className="space-y-1 relative">
-                                <span className="text-xs font-medium text-muted-foreground">Photo</span>
-                                <div className="relative group">
-                                  <img
-                                    src={getImageSrc(images.data.unapproved.photo)!}
-                                    alt="Unapproved Photo"
-                                    className="w-full aspect-square object-cover rounded border cursor-pointer"
-                                    onClick={() => setViewingImage(getImageSrc(images.data.unapproved.photo))}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingImage(getImageSrc(images.data.unapproved.photo));
-                                    }}
-                                    className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    type="button"
-                                    title="View full image"
-                                  >
-                                    <Eye className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                            {images.data.unapproved?.accsign && getImageSrc(images.data.unapproved.accsign) && (
-                              <div className="space-y-1 relative">
-                                <span className="text-xs font-medium text-muted-foreground">Signature</span>
-                                <div className="relative group">
-                                  <img
-                                    src={getImageSrc(images.data.unapproved.accsign)!}
-                                    alt="Unapproved Signature"
-                                    className="w-full aspect-square object-cover rounded border cursor-pointer"
-                                    onClick={() => setViewingImage(getImageSrc(images.data.unapproved.accsign))}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingImage(getImageSrc(images.data.unapproved.accsign));
-                                    }}
-                                    className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    type="button"
-                                    title="View full image"
-                                  >
-                                    <Eye className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold mb-1 text-sm uppercase tracking-wide text-muted-foreground">Approved</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {images.data.approved?.photo && getImageSrc(images.data.approved.photo) && (
-                              <div className="space-y-1 relative">
-                                <span className="text-xs font-medium text-muted-foreground">Photo</span>
-                                <div className="relative group">
-                                  <img
-                                    src={getImageSrc(images.data.approved.photo)!}
-                                    alt="Approved Photo"
-                                    className="w-full aspect-square object-cover rounded border cursor-pointer"
-                                    onClick={() => setViewingImage(getImageSrc(images.data.approved.photo))}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingImage(getImageSrc(images.data.approved.photo));
-                                    }}
-                                    className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    type="button"
-                                    title="View full image"
-                                  >
-                                    <Eye className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                            {images.data.approved?.accsign && getImageSrc(images.data.approved.accsign) && (
-                              <div className="space-y-1 relative">
-                                <span className="text-xs font-medium text-muted-foreground">Signature</span>
-                                <div className="relative group">
-                                  <img
-                                    src={getImageSrc(images.data.approved.accsign)!}
-                                    alt="Approved Signature"
-                                    className="w-full aspect-square object-cover rounded border cursor-pointer"
-                                    onClick={() => setViewingImage(getImageSrc(images.data.approved.accsign))}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingImage(getImageSrc(images.data.approved.accsign));
-                                    }}
-                                    className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    type="button"
-                                    title="View full image"
-                                  >
-                                    <Eye className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </motion.aside>
-                )}
-                {viewingImage && (
-                  <div
-                    className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-                    onClick={() => setViewingImage(null)}
-                  >
-                    <button
-                      onClick={() => setViewingImage(null)}
-                      className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300"
-                    >
-                      &times;
-                    </button>
-                    <img
-                      src={viewingImage}
-                      alt="Full image"
-                      className="max-w-full max-h-full object-contain"
-                    />
+            {/* Top-Right Relation Details Panel */}
+            {(() => {
+              const rNo = getRelationNumber();
+              if (!rNo) return null;
+              
+              const categoryLetter = relationDetails?.signatoryLevel 
+                ? relationDetails.signatoryLevel.replace('Category ', '').trim() 
+                : (state.params.limit && state.params.limit.includes('Category') ? state.params.limit.replace('Category ', '').trim() : '');
+
+              return (
+                <div className="p-3 space-y-1 text-slate-700 min-w-[200px] text-xs shrink-0 animate-in fade-in duration-200 text-right">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider flex items-center justify-end gap-1.5 mb-1">
+                    <span>Relation Details</span>
+                    <span className="font-mono text-[10px] text-slate-500 font-normal normal-case">({rNo})</span>
                   </div>
-                )}
-                <div className={`transition-all duration-300 ${isAsideOpen ? 'md:mr-48' : ''} mr-0`}>
+                  {relationDetails ? (
+                    <>
+                      <div className="font-bold text-slate-900 text-[13px] leading-tight mt-1">
+                        {`${relationDetails.firstName} ${relationDetails.otherName ? relationDetails.otherName + ' ' : ''}${relationDetails.surname}`.trim()}
+                      </div>
+                      {state.params.mandate && (
+                        <div className="text-[11px] text-slate-500 mt-1">
+                          Mandate: <span className="font-semibold text-slate-700">{state.params.mandate}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-end gap-2 text-[11px] text-slate-500 mt-1">
+                        {categoryLetter && (
+                          <span>
+                            Category: <span className="font-semibold text-slate-700">{categoryLetter}</span>
+                          </span>
+                        )}
+                        {categoryLetter && relationDetails.amtlimit !== undefined && (
+                          <span className="text-slate-300">•</span>
+                        )}
+                        {relationDetails.amtlimit !== undefined && (
+                          <span>
+                            Limit: <span className="font-mono font-semibold text-slate-700">{new Intl.NumberFormat('en-US').format(relationDetails.amtlimit)}</span>
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {state.params.mandate && (
+                        <div className="text-[11px] text-slate-500 mt-1">
+                          Mandate: <span className="font-semibold text-slate-700">{state.params.mandate}</span>
+                        </div>
+                      )}
+                      {state.params.limit && (
+                        <div className="text-[11px] text-slate-500">
+                          Limit: <span className="font-mono font-semibold text-slate-700">{state.params.limit}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {mode === 'update' && isAsideOpen && images && (
+                    <motion.aside
+                      initial={{ x: 320 }}
+                      animate={{ x: 0 }}
+                      exit={{ x: 320 }}
+                      transition={{ duration: 0.3 }}
+                      className="fixed md:top-12 top-[4.5rem] md:right-8 right-0 md:h-[calc(98vh-6rem)] h-[calc(98vh-4.5rem)] md:w-48 w-full bg-background border border-border rounded-lg md:rounded-l-lg shadow-lg p-4 overflow-auto z-50"
+                    >
+                      <div className="flex justify-between items-center mb-14 sticky top-3 bg-background pb-2">
+                        <h3 className="text-base font-semibold">Customer Images</h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsAsideOpen(false)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="w-4 h-4 bg-blue-50 rounded-full p-1" />
+                        </Button>
+                      </div>
+                      {images.status !== 'success' || !images.data ? (
+                        <p className="text-muted-foreground text-sm">No images available</p>
+                      ) : (
+                        <div className="space-y-14">
+                          <div>
+                            <h4 className="font-semibold mb-1 text-sm uppercase tracking-wide text-muted-foreground">Unapproved</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              {images.data.unapproved?.photo && getImageSrc(images.data.unapproved.photo) && (
+                                <div className="space-y-1 relative">
+                                  <span className="text-xs font-medium text-muted-foreground">Photo</span>
+                                  <div className="relative group">
+                                    <img
+                                      src={getImageSrc(images.data.unapproved.photo)!}
+                                      alt="Unapproved Photo"
+                                      className="w-full aspect-square object-cover rounded border cursor-pointer"
+                                      onClick={() => openImageViewer(getImageSrc(images.data.unapproved.photo)!)}
+                                    />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openImageViewer(getImageSrc(images.data.unapproved.photo)!);
+                                      }}
+                                      className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      type="button"
+                                      title="View full image"
+                                    >
+                                      <Eye className="w-3 h-3 text-gray-600" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              {images.data.unapproved?.accsign && getImageSrc(images.data.unapproved.accsign) && (
+                                <div className="space-y-1 relative">
+                                  <span className="text-xs font-medium text-muted-foreground">Signature</span>
+                                  <div className="relative group">
+                                    <img
+                                      src={getImageSrc(images.data.unapproved.accsign)!}
+                                      alt="Unapproved Signature"
+                                      className="w-full aspect-square object-cover rounded border cursor-pointer"
+                                      onClick={() => openImageViewer(getImageSrc(images.data.unapproved.accsign)!)}
+                                    />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openImageViewer(getImageSrc(images.data.unapproved.accsign)!);
+                                      }}
+                                      className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      type="button"
+                                      title="View full image"
+                                    >
+                                      <Eye className="w-3 h-3 text-gray-600" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold mb-1 text-sm uppercase tracking-wide text-muted-foreground">Approved</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              {images.data.approved?.photo && getImageSrc(images.data.approved.photo) && (
+                                <div className="space-y-1 relative">
+                                  <span className="text-xs font-medium text-muted-foreground">Photo</span>
+                                  <div className="relative group">
+                                    <img
+                                      src={getImageSrc(images.data.approved.photo)!}
+                                      alt="Approved Photo"
+                                      className="w-full aspect-square object-cover rounded border cursor-pointer"
+                                      onClick={() => openImageViewer(getImageSrc(images.data.approved.photo)!)}
+                                    />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openImageViewer(getImageSrc(images.data.approved.photo)!);
+                                      }}
+                                      className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      type="button"
+                                      title="View full image"
+                                    >
+                                      <Eye className="w-3 h-3 text-gray-600" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              {images.data.approved?.accsign && getImageSrc(images.data.approved.accsign) && (
+                                <div className="space-y-1 relative">
+                                  <span className="text-xs font-medium text-muted-foreground">Signature</span>
+                                  <div className="relative group">
+                                    <img
+                                      src={getImageSrc(images.data.approved.accsign)!}
+                                      alt="Approved Signature"
+                                      className="w-full aspect-square object-cover rounded border cursor-pointer"
+                                      onClick={() => openImageViewer(getImageSrc(images.data.approved.accsign)!)}
+                                    />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openImageViewer(getImageSrc(images.data.approved.accsign)!);
+                                      }}
+                                      className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      type="button"
+                                      title="View full image"
+                                    >
+                                      <Eye className="w-3 h-3 text-gray-600" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </motion.aside>
+                  )}
+                  {viewingImage && (
+                    <div
+                      className="fixed inset-0 bg-black/85 flex flex-col items-center justify-center z-50 p-4 overflow-hidden select-none"
+                      onClick={() => setViewingImage(null)}
+                    >
+                      {/* Zoom Control Panel */}
+                      <div 
+                        className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white rounded-full px-5 py-2 flex items-center gap-4 border border-slate-700 shadow-xl z-55"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.25))}
+                          className="w-8 h-8 rounded-full hover:bg-slate-800 active:bg-slate-700 flex items-center justify-center text-lg font-bold transition-colors text-slate-300 hover:text-white"
+                          type="button"
+                          title="Zoom Out"
+                        >
+                          -
+                        </button>
+                        <span className="text-xs font-mono font-bold w-12 text-center text-slate-300">
+                          {Math.round(zoomLevel * 100)}%
+                        </span>
+                        <button
+                          onClick={() => setZoomLevel(prev => Math.min(4.0, prev + 0.25))}
+                          className="w-8 h-8 rounded-full hover:bg-slate-800 active:bg-slate-700 flex items-center justify-center text-lg font-bold transition-colors text-slate-300 hover:text-white"
+                          type="button"
+                          title="Zoom In"
+                        >
+                          +
+                        </button>
+                        <div className="w-[1px] h-4 bg-slate-700" />
+                        <button
+                          onClick={() => setZoomLevel(1.0)}
+                          className="text-[10px] uppercase font-bold tracking-wider px-3 py-1 hover:bg-slate-800 active:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
+                          type="button"
+                        >
+                          Reset
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setViewingImage(null)}
+                        className="absolute top-4 right-4 text-white text-3xl hover:text-gray-300 focus:outline-none z-55 font-bold"
+                        type="button"
+                      >
+                        &times;
+                      </button>
+                      
+                      {/* Scrolled container for high levels of zooming */}
+                      <div className="w-full h-full flex items-center justify-center overflow-auto p-8">
+                        <img
+                          src={viewingImage}
+                          alt="Specimen view"
+                          className="max-h-[80vh] max-w-[85vw] object-contain origin-center transition-transform duration-150 ease-out shadow-2xl rounded-lg"
+                          style={{ 
+                            transform: `scale(${zoomLevel})`
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="grid md:grid-cols-2 gap-8">
                     {/* Photo Section */}
                     <div className="space-y-2">
@@ -462,12 +625,25 @@ export function PhotoSignature({
           </div>
                         {state.data.photo ? (
                           <div className="space-y-4 w-full pt-12">
-                            <img
-                              src={state.data.photo}
-                              alt="Captured photo"
-                              className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-primary"
-                            />
+                            <div className="relative group cursor-pointer mx-auto w-32 h-32" onClick={() => openImageViewer(state.data.photo!)}>
+                              <img
+                                src={state.data.photo}
+                                alt="Captured photo"
+                                className="w-full h-full object-cover rounded-full border-4 border-primary"
+                              />
+                              <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Eye className="w-8 h-8 text-white" />
+                              </div>
+                            </div>
                             <div className="flex gap-2 justify-center">
+                              <button
+                                onClick={() => openImageViewer(state.data.photo!)}
+                                className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600 transition-colors"
+                                type="button"
+                                title="View full image"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </button>
                               <button
                                 onClick={() => setEditingPhoto(true)}
                                 className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs hover:bg-primary/80 transition-colors"
@@ -567,12 +743,25 @@ export function PhotoSignature({
           </div>
                         {state.data.signature ? (
                           <div className="space-y-4 text-center w-full pt-12">
-                            <img
-                              src={state.data.signature}
-                              alt="Signature"
-                              className="max-h-20 mx-auto border border-border rounded"
-                            />
+                            <div className="relative group cursor-pointer mx-auto max-w-[200px]" onClick={() => openImageViewer(state.data.signature!)}>
+                              <img
+                                src={state.data.signature}
+                                alt="Signature"
+                                className="max-h-20 mx-auto border border-border rounded"
+                              />
+                              <div className="absolute inset-0 bg-black/20 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Eye className="w-6 h-6 text-white" />
+                              </div>
+                            </div>
                             <div className="flex gap-2 justify-center">
+                              <button
+                                onClick={() => openImageViewer(state.data.signature!)}
+                                className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600 transition-colors"
+                                type="button"
+                                title="View full image"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </button>
                               {signatureMode === 'upload' && (
                                 <button
                                   onClick={() => setEditingSignature(true)}
@@ -676,6 +865,7 @@ export function PhotoSignature({
                       title="Edit Photo"
                       onSave={async (editedImageUrl) => {
                         dispatch({ type: 'SET_PHOTO', photo: editedImageUrl });
+                        setIsPhotoChanged(true);
                        
                         // Save edited photo to backend
                         const result = await captureBrowse(editedImageUrl, 1);
@@ -696,6 +886,7 @@ export function PhotoSignature({
                       title="Edit Signature"
                       onSave={async (editedImageUrl) => {
                         dispatch({ type: 'SET_SIGNATURE', signature: editedImageUrl });
+                        setIsSignatureChanged(true);
                        
                         // Save edited signature to backend
                         const result = await captureBrowse(editedImageUrl, 2);

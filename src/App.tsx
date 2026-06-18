@@ -10,6 +10,7 @@ import Update from "./pages/Update";
 import Enquiry from "./pages/Enquiry";
 import NotFound from "./pages/NotFound";
 import Gateway from "./pages/Gateway";
+import StandaloneSetup from "./pages/StandaloneSetup";
 import { StepConfigurationPage } from "./components/StepConfigurationPage";
 
 const queryClient = new QueryClient();
@@ -22,17 +23,21 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Root Standalone launcher Dashboard */}
+            <Route path="/" element={<StandaloneSetup />} />
+
             {/* Capture phase routes */}
             <Route path="/imaging/:data?" element={<Gateway />} />
             {/* Approval phase route */}
             {/* <Route path="/imaging/approve" element={<Approval />} /> */}
             <Route path="/imaging/image_approval_screen" element={<Approval />} />
-            {/* Update phase route */}
+            {/* Enquiry phase routes */}
             {/* <Route path="/update/" element={<Update />} /> */}
-            {/* Enquiry phase route */}
-            {/* <Route path="/viewimage-:customerId" element={<Enquiry />} /> */}
-            {/* Default route */}
-            {/* <Route path="/" element={<Index />} /> */}
+            <Route path="/imaging/viewimage-:id" element={<Gateway />} />
+            <Route path="/imaging/getimagescred-:id" element={<Gateway />} />
+            <Route path="/imaging/getimages-:id" element={<Gateway />} />
+            <Route path="/imaging/view_cheques-:id" element={<Gateway />} />
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="/imaging/stepconfig" element={<StepConfigurationPage />} />
             <Route path="*" element={<NotFound />} />
