@@ -31,6 +31,7 @@ const App = () => (
             {/* Approval phase route */}
             {/* <Route path="/imaging/approve" element={<Approval />} /> */}
             <Route path="/imaging/image_approval_screen" element={<Approval />} />
+            <Route path="/imaging/account_image_approval_screen" element={<Approval mode="account" />} />
             {/* Enquiry phase routes */}
             {/* <Route path="/update/" element={<Update />} /> */}
             <Route path="/imaging/viewimage-:id" element={<Gateway />} />

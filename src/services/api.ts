@@ -39,11 +39,13 @@ export interface EnqDetail {
   limit?: number;
   sign_category?: string;
   docs: DocumentData[];
+  relation_name?: string;
 }
 
 export interface EnquiryData {
   account_mandate: string;
   enq_details: EnqDetail[];
+  account_name?: string;
 }
 
 export interface SearchImagesResponse {
@@ -314,6 +316,7 @@ export const getStandaloneAccountDetails = (accountNumber: string) => {
         const biometrics = biometricsJson ? JSON.parse(biometricsJson) : {};
         enq_details.push({
           relation_no: rId,
+          relation_name: `${rel.firstName} ${rel.otherName ? rel.otherName + ' ' : ''}${rel.surname}`.trim(),
           pix: biometrics.photo || undefined,
           signature: biometrics.signature || undefined,
           fingerprint_one: biometrics.thumbprint1 || undefined,
@@ -332,6 +335,7 @@ export const getStandaloneAccountDetails = (accountNumber: string) => {
         });
       }
       return {
+        account_name: acc.accountName,
         account_mandate: acc.mandate,
         enq_details
       };
@@ -725,65 +729,128 @@ export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: strin
 
 // Search for customer images (approval phase)
 export const searchImages = async (relationno: string): Promise<SearchImagesResponse> => {
-  
   try {
-    
+    let localData: any = null;
+    let rel: any = null;
+    let acc: any = null;
+
     if (isStandaloneRelation(relationno)) {
       const relsJson = localStorage.getItem('standalone_relations');
       const accountsJson = localStorage.getItem('standalone_accounts');
       if (relsJson && accountsJson) {
         const rels = JSON.parse(relsJson);
         const accounts = JSON.parse(accountsJson);
-        const rel = rels[relationno];
+        rel = rels[relationno];
         if (rel) {
-          const acc = accounts[rel.accountNumber];
+          acc = accounts[rel.accountNumber];
           const biometricsJson = localStorage.getItem(`standalone_biometrics_${relationno}`);
-          const biometrics = biometricsJson ? JSON.parse(biometricsJson) : {};
-          
-          
-          const payload: Record<string, unknown> = {
-            photo: biometrics.photo || undefined,
-            accsign: biometrics.signature || undefined,
-            thumbprint1: biometrics.thumbprint1 || undefined,
-            thumbprint2: biometrics.thumbprint2 || undefined,
-            limit: rel.amtlimit?.toString(),
-            mandate: acc?.mandate,
-            documents: (biometrics.idFront || biometrics.idBack) ? [
-              {
-                type: 'national_id',
-                sides: {
-                  front: biometrics.idFront || undefined,
-                  back: biometrics.idBack || undefined
-                }
-              }
-            ] : []
-          };
-          
-          const emptyBucket = {
-            photo: '',
-            accsign: '',
-            thumbprint1: '',
-            thumbprint2: '',
-            documents: [] as DocumentData[],
-            limit: '',
-            mandate: ''
-          };
+          localData = biometricsJson ? JSON.parse(biometricsJson) : {};
+        }
+      }
+    }
 
-          const hasData = payload.photo || payload.accsign || payload.thumbprint1 || payload.thumbprint2 || (payload.documents as DocumentData[])?.length;
-          if (hasData) {
-            return {
-              status: 'success',
-              message: 'Images retrieved from standalone store',
-              data: {
-                name: `${rel.firstName} ${rel.otherName || ''} ${rel.surname}`.trim(),
-                relation_no: relationno,
-                approved: rel.isApproved ? payload : emptyBucket,
-                unapproved: !rel.isApproved ? payload : emptyBucket
-              }
-            };
+    // Try to fetch from backend as fallback/sync
+    let backendData: any = null;
+    try {
+      const response = await fetch(`${getBaseUrl()}/get_temp_image-${relationno}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result && (result.approved || result.unapproved)) {
+          backendData = result;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend fetch failed in searchImages:', e);
+    }
+
+    if (rel) {
+      const biometrics = localData || {};
+      const approved = backendData?.approved || {};
+      const unapproved = backendData?.unapproved || {};
+
+      const photo = biometrics.photo || unapproved.photo || approved.photo || undefined;
+      const signature = biometrics.signature || unapproved.accsign || approved.accsign || undefined;
+      const thumbprint1 = biometrics.thumbprint1 || unapproved.thumbprint1 || approved.thumbprint1 || undefined;
+      const thumbprint2 = biometrics.thumbprint2 || unapproved.thumbprint2 || approved.thumbprint2 || undefined;
+
+      const apiDocFront = unapproved.documents?.[0]?.sides?.front || approved.documents?.[0]?.sides?.front;
+      const apiDocBack = unapproved.documents?.[0]?.sides?.back || approved.documents?.[0]?.sides?.back;
+      const idFront = biometrics.idFront || apiDocFront || undefined;
+      const idBack = biometrics.idBack || apiDocBack || undefined;
+
+      // Update local storage cache
+      const updatedBio = {
+        ...biometrics,
+        photo: photo || null,
+        signature: signature || null,
+        thumbprint1: thumbprint1 || null,
+        thumbprint2: thumbprint2 || null,
+        idFront: idFront || null,
+        idBack: idBack || null,
+      };
+      localStorage.setItem(`standalone_biometrics_${relationno}`, JSON.stringify(updatedBio));
+
+      // Update relation status
+      let statusChanged = false;
+      if (photo && !rel.photoCaptured) { rel.photoCaptured = true; statusChanged = true; }
+      if (signature && !rel.signatureCaptured) { rel.signatureCaptured = true; statusChanged = true; }
+      if ((idFront || idBack) && !rel.idCaptured) { rel.idCaptured = true; statusChanged = true; }
+      if ((thumbprint1 || thumbprint2) && !rel.fingerprintCaptured) { rel.fingerprintCaptured = true; statusChanged = true; }
+
+      if (statusChanged) {
+        const relsJson = localStorage.getItem('standalone_relations');
+        if (relsJson) {
+          const rels = JSON.parse(relsJson);
+          if (rels[relationno]) {
+            rels[relationno] = { ...rels[relationno], ...rel };
+            localStorage.setItem('standalone_relations', JSON.stringify(rels));
           }
         }
       }
+
+      const payload: Record<string, unknown> = {
+        photo,
+        accsign: signature,
+        thumbprint1,
+        thumbprint2,
+        limit: rel.amtlimit?.toString(),
+        mandate: acc?.mandate,
+        documents: (idFront || idBack) ? [
+          {
+            type: 'national_id',
+            sides: {
+              front: idFront,
+              back: idBack
+            }
+          }
+        ] : []
+      };
+
+      const emptyBucket = {
+        photo: '',
+        accsign: '',
+        thumbprint1: '',
+        thumbprint2: '',
+        documents: [] as DocumentData[],
+        limit: '',
+        mandate: ''
+      };
+
+      return {
+        status: 'success',
+        message: 'Images retrieved and synced',
+        data: {
+          name: `${rel.firstName} ${rel.otherName || ''} ${rel.surname}`.trim(),
+          relation_no: relationno,
+          approved: rel.isApproved ? payload : emptyBucket,
+          unapproved: !rel.isApproved ? payload : emptyBucket
+        }
+      };
     }
    
     const response = await fetch(`${getBaseUrl()}/get_temp_image-${relationno}`, {
@@ -821,6 +888,11 @@ export const searchImages = async (relationno: string): Promise<SearchImagesResp
 export const enquiryImages = async (customerId: string): Promise<EnquiryImagesResponse> => {
   try {
     if (isStandaloneRelation(customerId)) {
+      try {
+        await searchImages(customerId);
+      } catch (e) {
+        console.warn('searchImages sync failed inside enquiryImages:', e);
+      }
       const relsJson = localStorage.getItem('standalone_relations');
       const accountsJson = localStorage.getItem('standalone_accounts');
       if (relsJson && accountsJson) {
@@ -836,10 +908,12 @@ export const enquiryImages = async (customerId: string): Promise<EnquiryImagesRe
             status: 'success',
             message: 'Images retrieved from standalone store',
             data: {
+              account_name: acc?.accountName || 'Unknown Account',
               account_mandate: acc?.mandate || 'SOLE SIGNATORY',
               enq_details: [
                 {
                   relation_no: customerId,
+                  relation_name: `${rel.firstName} ${rel.otherName ? rel.otherName + ' ' : ''}${rel.surname}`.trim(),
                   pix: biometrics.photo || undefined,
                   signature: biometrics.signature || undefined,
                   fingerprint_one: biometrics.thumbprint1 || undefined,

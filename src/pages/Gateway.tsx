@@ -35,6 +35,20 @@ const Gateway = () => {
     return <Update relationNo={parsed.params.relationNo || null} />;
   }
 
+  if (path.startsWith('/imaging/account_image_approval_screen')) {
+    const match = path.match(/\/account_image_approval_screen-([0-9a-zA-Z]+)-([0-9a-zA-Z]+)-([0-9a-zA-Z_.]+)-([0-9a-zA-Z_-]+)-([0-9.]{7,15})$/);
+    if (!match) {
+      return <NotFound message="<strong>Invalid account approval URL format.</strong><br><br>Expected: /imaging/account_image_approval_screen-[BATCH]-[ACCOUNT_NO]-[APPROVED_BY]-[HOSTNAME]-[TERMINAL_IP]<br><br>Example: /imaging/account_image_approval_screen-B001-123456-supervisor-MYPC-10.0.0.1" />;
+    }
+    return <Approval mode="account" accountParams={{
+      batch: match[1],
+      custNo: match[2],
+      approvedBy: match[3],
+      hostname: match[4],
+      terminalIp: match[5]
+    }} />;
+  }
+
   if (path.startsWith('/imaging/image_approval_screen')) {
     if (!parsed || parsed.action !== 'approval') {
       return <NotFound message="<strong>Invalid approval URL format.</strong><br><br>Expected: /imaging/image_approval_screen-[RELATION_NO]-[BATCH]-[CUST_NO]-[APPROVED_BY]-[HOSTNAME]-[TERMINAL_IP]<br>(Note: Batch can be empty, e.g., --)<br><br>Example: /imaging/image_approval_screen-123456-B001-C001-supervisor-MYPC-10.0.0.1" />;

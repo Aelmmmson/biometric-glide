@@ -236,6 +236,12 @@ export function PhotoSignature({
   };
 
   const handleSubmit = async () => {
+    // If no changes, just go to next step
+    if (!isPhotoChanged && !isSignatureChanged && state.data.photo && state.data.signature) {
+      onNext?.();
+      return;
+    }
+
     if (!state.data.photo || !state.data.signature || isSubmitting) return;
 
     setIsSubmitting(true);
@@ -282,7 +288,7 @@ export function PhotoSignature({
     }
   };
 
-  const canSubmit = !!state.data.photo && !!state.data.signature && (isPhotoChanged || isSignatureChanged);
+  const canSubmit = !!state.data.photo && !!state.data.signature;
 
   const initializeSigWeb = () => {
     const extendedWindow = window as unknown as ExtendedWindow;
@@ -316,31 +322,7 @@ export function PhotoSignature({
       >
         <div className={`transition-all duration-300 ${isAsideOpen ? 'md:mr-48' : ''} mr-0`}>
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-center mb-1">
-                <h2 className="text-2xl font-bold">
-                  {mode === 'update' ? 'Update Photo & Signature' : 'Photo & Signature'}
-                </h2>
-                {mode === 'update' && !isAsideOpen && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAsideOpen(true)}
-                    className="flex items-center gap-1 h-8 px-3"
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                    <span className="hidden sm:inline">Images</span>
-                  </Button>
-                )}
-              </div>
-              <p className="text-muted-foreground">
-                {mode === 'update'
-                  ? 'Update your photo and signature.'
-                  : 'Capture or upload your photo and signature.'}
-              </p>
-            </div>
-
-            {/* Top-Right Relation Details Panel */}
+            {/* Top-Left Relation Details Panel (was on the right) */}
             {(() => {
               const rNo = getRelationNumber();
               if (!rNo) return null;
@@ -350,8 +332,8 @@ export function PhotoSignature({
                 : (state.params.limit && state.params.limit.includes('Category') ? state.params.limit.replace('Category ', '').trim() : '');
 
               return (
-                <div className="p-3 space-y-1 text-slate-700 min-w-[200px] text-xs shrink-0 animate-in fade-in duration-200 text-right">
-                  <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider flex items-center justify-end gap-1.5 mb-1">
+                <div className="p-3 space-y-1 text-slate-700 min-w-[200px] text-xs shrink-0 animate-in fade-in duration-200 text-left">
+                  <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider flex items-center justify-start gap-1.5 mb-1">
                     <span>Relation Details</span>
                     <span className="font-mono text-[10px] text-slate-500 font-normal normal-case">({rNo})</span>
                   </div>
@@ -365,7 +347,7 @@ export function PhotoSignature({
                           Mandate: <span className="font-semibold text-slate-700">{state.params.mandate}</span>
                         </div>
                       )}
-                      <div className="flex items-center justify-end gap-2 text-[11px] text-slate-500 mt-1">
+                      <div className="flex items-center justify-start gap-2 text-[11px] text-slate-500 mt-1">
                         {categoryLetter && (
                           <span>
                             Category: <span className="font-semibold text-slate-700">{categoryLetter}</span>
@@ -398,6 +380,29 @@ export function PhotoSignature({
                 </div>
               );
             })()}
+
+            {/* Top-Right Title Details Panel (was on the left) */}
+            <div className="flex-1 min-w-0 text-right flex flex-col items-end">
+              <h2 className="text-2xl font-bold">
+                {mode === 'update' ? 'Update Photo & Signature' : 'Photo & Signature'}
+              </h2>
+              <p className="text-muted-foreground">
+                {mode === 'update'
+                  ? 'Update your photo and signature.'
+                  : 'Capture or upload your photo and signature.'}
+              </p>
+              {mode === 'update' && !isAsideOpen && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAsideOpen(true)}
+                  className="flex items-center gap-1 h-8 px-3 mt-2"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  <span>Images</span>
+                </Button>
+              )}
+            </div>
           </div>
 
           {mode === 'update' && isAsideOpen && images && (
@@ -929,8 +934,10 @@ export function PhotoSignature({
                 />
                 Submitting...
               </>
+            ) : (isPhotoChanged || isSignatureChanged) ? (
+              mode === 'update' ? 'Update Photo & Signature' : 'Submit Photo & Signature'
             ) : (
-              'Submit Photo & Signature'
+              'Continue'
             )}
           </Button>
 

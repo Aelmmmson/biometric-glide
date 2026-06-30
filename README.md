@@ -1,121 +1,187 @@
-# Banking Biometric Imaging System (Frontend)
+# Banking Biometric Onboarding & Management Suite (Biometric Glide)
 
-A modern React + TypeScript web application for customer biometric onboarding, update, enquiry, and approval workflows in a banking environment.
+A modern, high-performance React + TypeScript web application for customer biometric onboarding, updates, enquiries, and approval workflows in a retail banking environment.
 
-This system integrates with a legacy PHP backend (`http://10.203.14.169/imaging/...`) and supports real-time capture of photos, signatures, identification documents, and fingerprints.
+This system integrates with a legacy PHP backend (`http://10.203.14.169/imaging/...`) and supports real-time capture of photos, signatures, identification documents, and fingerprints. It also features a fully independent **Standalone Coexistence Mode** with local data synchronization, a dynamic **Step Configuration Dashboard**, a secure **Account-Level Approval workflow**, and a forensic-grade **Offline AI Signature Verification Engine** (powered by a local Python server).
 
-## Features
+## Core Modules & Features
 
-- Multi-step biometric capture (Photo → Identification → Fingerprint → Review & Submit)
-- Real-time saving to backend on every capture (no data loss on page refresh)
-- Update mode for existing customers
-- Approval dashboard for supervisors
-- Enquiry / View-only mode via customer ID or encrypted account credential
-- Image editing (crop/rotate/brightness) before final save
-- Signature pad (SigWeb tablet) support
-- Fingerprint scanner integration (Digital Persona / SecuGen devices via backend API)
-- Responsive UI built with shadcn/ui + Tailwind CSS
+### 1. Dual-Mode Coexistence Architecture
+* **Integrated x100 Mode**: Automatically routes requests to query Oracle core banking database views and packages using standard URL parameter schemes.
+* **Standalone Mode**: Operates independently of core banking availability. Tellers can manually register accounts (`TB_STANDALONE_ACCOUNTS`) and signatory relations (`TB_STANDALONE_RELATIONS`) in a local PostgreSQL database, with frontend states cached in `localStorage`.
+* **Fallback Retrieval Layer**: Queries are resolved first against the local standalone database. If no record is found, the system automatically falls back to Oracle Core Banking, allowing 100% component and page reuse.
 
-## URL Access Patterns (Strict Validation)
+### 2. Standalone Setup & Management Dashboard (`/`)
+* **Biometric Status Matrix**: Provides real-time visual tracking of photo, signature, ID document, and fingerprint capture and approval status for all signatories under an account.
+* **Biometric Onboarding Launcher**: Directly triggers the 4-step onboarding capture flow from signatory entries.
+* **Biometrics Preview Modal**: Tellers can instantly preview high-fidelity captured specimens (photos, signatures, IDs, fingerprints) stored locally or fetched from the API.
 
-The system enforces strict URL patterns to maintain compatibility with legacy routing. The main application is typically accessed via the `/imaging/` prefix.
+### 3. Step Configuration Dashboard (`/imaging/stepconfig`)
+* Allows tellers and administrators to dynamically enable or disable specific onboarding steps: **Photo**, **Identification (ID)**, and **Fingerprint** capture.
+* Configuration changes are persisted back to the backend `/api/activities` configuration endpoint.
 
-| Purpose | URL Pattern & Example | Component |
+### 4. Interactive Cheque Detail & Verification Console (`/imaging/view_cheques-[CHQNO]`)
+* Renders comprehensive instrument metadata (instrument code, cheque amount, status, payer and beneficiary details).
+* Features zoom-on-hover magnifying glasses for front and back cheque scans and 3D flipping mandate cards for signature/portrait specimens.
+* **Parallel AI signature verification**: Compares the cheque signature against all signatory signature cards in parallel.
+* Support for multiple **adjustable Region-of-Interest (ROI) crop zones** to target signatures on cheques.
+* **Sandbox Verification Modal**: Accessible via the beaker icon, allowing testing of the AI Verification Engine on custom, manually uploaded files.
+* **Mandate Validation Triggers**: Instantly validates transaction compliance against account mandates.
+
+### 5. Multi-Step Biometric Capture Flow
+* Step 1: Webcam Photo Capture (with auto file upload fallback) and Signature Pad capture (Topaz SigWeb tablet integration).
+* Step 2: Identification Scans (multiple document types, front and back sides).
+* Step 3: Fingerprint Scanning (Suprema / Digital Persona scanner integration).
+* Step 4: Review and Submit (includes a canvas image editor with cropping, rotation, brightness, and contrast controls).
+
+---
+
+## URL Access Patterns & Routing
+
+The system uses strict URL routing formats parsed by [Gateway.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Gateway.tsx) to ensure full backward compatibility with legacy systems.
+
+| Purpose | URL Pattern & Example | Component / View |
 | :--- | :--- | :--- |
-| **Capture Phase** | `/imaging/capture-[RELATION]-[BY]-[YYYY-MM-DD]`<br>Ex: `/imaging/capture-123456-admin-2024-04-21` | `Index.tsx` |
-| **Update Phase** | `/imaging/update-[REL-BATCH-MANDATE-LIMIT-BY-DATE]`<br>Ex: `/imaging/update-123456-B001-M1-50000-admin-2024-04-21` | `Update.tsx` |
-| **Approval** | `/imaging/image_approval_screen-[REL-BATCH-CUST-BY-HOST-IP]`<br>Ex: `/imaging/image_approval_screen-123456-B001-C001-supervisor-PC-10.0.0.1`<br>Note: Batch can be empty (e.g., `...screen-123456--C001...`) | `Approval.tsx` |
-| **Relation Enquiry** | `/imaging/viewimage-[RELATION_NO]` or `/viewimage-[RELATION_NO]`<br>Ex: `/imaging/viewimage-000123` | `Enquiry.tsx` |
-| **Credential Enquiry** | `/imaging/getimagescred-[CREDENTIAL]` or `/getimagescred-[CREDENTIAL]`<br>Ex: `/imaging/getimagescred-ABC123XYZ` | `Enquiry.tsx` |
-| **Account Enquiry** | `/imaging/getimages-[ACCOUNT_NO]` or `/getimages-[ACCOUNT_NO]`<br>Ex: `/imaging/getimages-123456` | `Enquiry.tsx` |
-| **View Cheques** | `/imaging/view_cheques-[CHQNO]` or `/view_cheques-[CHQNO]`<br>Ex: `/imaging/view_cheques-005001` | `ViewCheques.tsx` |
-| **System Config** | `/imaging/stepconfig`<br>Ex: `http://localhost:8089/imaging/stepconfig` | `StepConfigurationPage.tsx` |
+| **Standalone Dashboard** | `/` | [StandaloneSetup.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/StandaloneSetup.tsx) |
+| **Capture Phase** | `/imaging/capture-[RELATION]-[BY]-[YYYY-MM-DD]`<br>Ex: `/imaging/capture-123456-admin-2024-04-21` | [Index.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Index.tsx) / [Gateway.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Gateway.tsx) |
+| **Update Phase** | `/imaging/update-[REL-BATCH-MANDATE-LIMIT-BY-DATE]`<br>Ex: `/imaging/update-123456-B001-M1-50000-admin-2024-04-21` | [Update.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Update.tsx) / [Gateway.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Gateway.tsx) |
+| **Relation Approval** | `/imaging/image_approval_screen-[REL-BATCH-CUST-BY-HOST-IP]`<br>Ex: `/imaging/image_approval_screen-123456-B001-C001-supervisor-PC-10.0.0.1` | [Approval.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Approval.tsx) |
+| **Account Approval** | `/imaging/account_image_approval_screen-[BATCH]-[ACCOUNT_NO]-[APPROVED_BY]-[HOSTNAME]-[TERMINAL_IP]`<br>Ex: `/imaging/account_image_approval_screen-B001-123456-supervisor-PC-10.0.0.1` | [Approval.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Approval.tsx) (Account Mode) |
+| **Relation Enquiry** | `/imaging/viewimage-[RELATION_NO]` or `/viewimage-[RELATION_NO]` | [Enquiry.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Enquiry.tsx) / [Gateway.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Gateway.tsx) |
+| **Credential Enquiry** | `/imaging/getimagescred-[CREDENTIAL]` or `/getimagescred-[CREDENTIAL]` | [Enquiry.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Enquiry.tsx) / [Gateway.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Gateway.tsx) |
+| **Account Enquiry** | `/imaging/getimages-[ACCOUNT_NO]` or `/getimages-[ACCOUNT_NO]` | [Enquiry.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Enquiry.tsx) / [Gateway.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Gateway.tsx) |
+| **View Cheques** | `/imaging/view_cheques-[CHQNO]` or `/view_cheques-[CHQNO]` | [ViewCheques.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/ViewCheques.tsx) / [Gateway.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/pages/Gateway.tsx) |
+| **System Config** | `/imaging/stepconfig` | [StepConfigurationPage.tsx](file:///c:/Users/USG/Downloads/biometric-glide/src/components/StepConfigurationPage.tsx) |
 
 > [!IMPORTANT]
-> **Date Format**: The `YYYY-MM-DD` format is strictly enforced for Capture and Update routes. Invalid dates (e.g., month 13 or day 32) will trigger a 404 error page.
+> **Date Format**: The `YYYY-MM-DD` format is strictly validated for Capture and Update routes. Invalid dates (e.g., month 13 or day 32) will trigger a custom 404 page detailing expected parameters.
 
-### Automatic Routing (Gateway)
-The `Gateway.tsx` component acts as an intelligent router. It parses the URL parameters and automatically renders the correct page based on the pattern detected. If a URL is malformed (e.g., missing a segment or using an invalid date), it will display a detailed 404 page explaining the expected structure and providing an example.
+---
 
 ## Required Hardware / Devices
 
-| Feature             | Device / Requirement                                 | Notes |
-|---------------------|-------------------------------------------------------|-------|
-| Photo               | Webcam (built-in or USB)                              | Auto fallback to file upload |
-| Signature           | Topaz SigWeb tablet (or any SigWeb-compatible)       | Uses SigWeb SDK (loaded via script in `SigWebTablet.ts`) |
-| Fingerprint         | Suprema   | Backend PHP service must be running and device connected to teller PC |
-| Document scanning   | Flatbed scanner or mobile camera upload               | Upload mode always available |
+| Feature | Device / Requirement | Integration Method |
+| :--- | :--- | :--- |
+| **Photo** | Webcam (built-in or USB) | Standard browser `getUserMedia` API (falls back to manual file upload) |
+| **Signature** | Topaz SigWeb Tablet | Topaz SigWeb SDK (loaded dynamically via `SigWebTablet.ts`) |
+| **Fingerprint** | Suprema Scanner | Local middleware API endpoint (`http://192.168.1.142:8080`) |
+| **ID Documents** | Flatbed scanner or Mobile upload | Native file input upload |
 
-## Backend API Base (Internal Network Only)
+---
 
-```
-http://10.203.14.169/imaging/
-```
+## Backend Infrastructure (Legacy PHP + local AI Server)
 
-All API calls are made from the frontend directly to this legacy server. No proxy or CORS issues in production (same intranet).
+The frontend communicates with two distinct servers depending on the operation:
 
-## Project Structure (Key Files)
+1. **Legacy php server**: Serving APIs under `http://10.203.14.169/imaging/`.
+2. **Offline AI verification engine**: Run locally on port `8130` (`http://127.0.0.1:8130/`).
+
+---
+
+## Project Structure & key Files
 
 ```
 src/
 ├── pages/
-│   ├── Index.tsx          → Main capture flow (steps 1–4)
-│   ├── Approval.tsx       → Supervisor approval interface
-│   ├── Enquiry.tsx        → View-only customer images
-│   ├── ViewCheques.tsx    → Cheque detail report presentation
-│   ├── Gateway.tsx        → URL router based on path
-│   └── Update.tsx         → Update mode wrapper
+│   ├── StandaloneSetup.tsx    → Standalone Account Setup & Signatory Dashboard (root `/`)
+│   ├── Index.tsx              → Main multi-step biometric capture flow (steps 1–4)
+│   ├── Approval.tsx           → Supervisor approval (supports relation & account modes)
+│   ├── Enquiry.tsx            → Customer profile enquiry (view-only)
+│   ├── ViewCheques.tsx        → Cheque Detail Console & automated verification panel
+│   ├── Gateway.tsx            → Router parsing URL formats to trigger page rendering
+│   └── Update.tsx             → Update mode container wrapper
 ├── components/
-│   ├── PhotoSignature.tsx → Step 1: Photo + Signature capture
-│   ├── Identification.tsx → Step 2: ID documents (National ID, Passport, etc.)
-│   ├── Fingerprint.tsx    → Step 3: Right & left thumb capture
-│   └── ImageEditor.tsx    → Crop/rotate/brightness editor
-├── services/api.ts        → All backend API wrappers + URL parsing utils
-├── contexts/BiometricContext.tsx → Global state for multi-step form
-└── lib/SigWebTablet.ts    → SigWeb tablet integration
+│   ├── PhotoSignature.tsx     → Capture Step 1: Webcam Photo + Topaz Signature pad
+│   ├── Identification.tsx     → Capture Step 2: ID document type selection & uploads
+│   ├── Fingerprint.tsx        → Capture Step 3: Fingerprint enrollment (right & left thumbs)
+│   ├── Review.tsx             → Capture Step 4: Verification review and submission
+│   ├── ImageEditor.tsx        → Canvas image manipulation (rotate, crop, brightness, contrast)
+│   ├── StepConfigurationPage.tsx → Step configuration setup screen (dynamic step toggle)
+│   ├── SandboxVerifyModal.tsx → Interactive sandbox signature verification panel
+│   ├── ProgressSidebar.tsx    → Capturing steps stepper sidebar
+│   └── PrivacyModal.tsx       → Onboarding privacy disclosures modal
+├── services/api.ts            → Unified data mapping, API wrappers, URL regex, & local storage mock operations
+└── lib/SigWebTablet.ts        → SDK binding for Topaz Signature Tablets
 ```
 
-## Local Development
+---
 
+## Local Development & Setup
+
+### 1. Clone and Install Dependencies
 ```bash
-# Clone and install
 git clone <your-repo>
-cd project-name
+cd biometric-glide
 npm install
+```
 
-# Start dev server
+### 2. Run the Frontend Development Server
+```bash
 npm run dev
 ```
+The application will launch on `http://localhost:8089`.
 
-The app will run on `http://localhost:8089`
+### 3. Running with Full Device Support
+To run tests using physical hardware (fingerprint scanner or Topaz signature pad):
+* Run the application on the workstation where devices are physically connected.
+* Ensure local device drivers (SigWeb and fingerprint services) are running.
+* Verify the legacy PHP backend server `10.203.14.169` is accessible on the network.
 
-For full functionality (fingerprint/signature tablet):
-- Run on the actual teller machine where devices are connected
-- Backend imaging service must be reachable at `10.203.14.169`
-
-
-## Allow Camera Access
+### 4. Enable Camera Access for Insecure Origins (HTTP)
+If accessing the development server from other intranet IP addresses over HTTP, Chrome block webcams. Enable it via:
+```
 chrome://flags/#unsafely-treat-insecure-origin-as-secure
+```
+Add your development URL (e.g. `http://192.168.x.x:8089`) to the exceptions text box and relaunch the browser.
 
-Add URL to existing paths and relaunch
-Note this only works on chrome, brave and not mozilla
+---
 
-## Deployment
+## Standalone Database Configuration (PostgreSQL)
 
-The app is a static Vite + React SPA. Deploy to any static host (Vercel, Netlify, Cloudflare Pages, etc.).
+To support **Standalone Mode** during core banking database outages, two indexed tables are defined in the local PostgreSQL database instance. These local tables store account metadata and signatory details, linking them to the binary biometric blobs stored in the system.
 
-No server-side rendering required.
+### PostgreSQL Schema Setup
+```sql
+-- Stores account type, categories, and mandate instructions
+CREATE TABLE PUBLIC.TB_STANDALONE_ACCOUNTS (
+    account_number VARCHAR(50) PRIMARY KEY,
+    account_category VARCHAR(100) NOT NULL, -- joint, shareholder, individuals, corporate, etc.
+    mandate VARCHAR(500) NOT NULL,          -- sole signatory, any two to sign, etc.
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-## Technologies
+-- Stores signatory relation numbers, transaction limits, names, and signing levels
+CREATE TABLE PUBLIC.TB_STANDALONE_RELATIONS (
+    relation_no VARCHAR(50) PRIMARY KEY,
+    account_number VARCHAR(50) NOT NULL REFERENCES PUBLIC.TB_STANDALONE_ACCOUNTS(account_number) ON DELETE CASCADE,
+    first_name VARCHAR(100) NOT NULL,
+    other_name VARCHAR(100),
+    surname VARCHAR(100) NOT NULL,
+    amtlimit NUMERIC(18,2) DEFAULT 0,
+    signatory_level VARCHAR(50) NOT NULL,  -- Category A, Category B, Category C, Category D
+    date_of_birth DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-- React 18 + TypeScript
-- Vite
-- TanStack Query (React Query)
-- shadcn/ui components
-- Tailwind CSS
-- Framer Motion
-- Lucide Icons
-- Zustand-like context for multi-step state
+### Predefined Input Constraints
+Tellers are constrained to specific options in the standalone setup UI to align with organizational business rules:
+* **Account Category Options**: `Joint`, `Shareholder`, `Individuals`, `Shareholder Related`, `Director`, `Director Related`, `Staff Related`
+* **Account Mandates**: `Sole Signatory`, `Any two to sign`, `All Three to sign`, `Either to Sign`, `Both to Sign`
+* **Signatory Levels**: `Category A`, `Category B`, `Category C`, `Category D`
+
+---
+
+## Core Technologies
+
+* **Vite + React 18 + TypeScript**
+* **Tailwind CSS + shadcn/ui** for premium responsive UI layouts
+* **TanStack Query (React Query)** for caching and backend API state synchronizations
+* **Framer Motion** for premium interactive page transitions and micro-animations
+* **LocalStorage API** for offline metadata caching and state fallback in Standalone Mode
+* **Python Fast API + OpenCV (Local Server)** for offline biometric signature alignment and metrics computation
+
+---
 
 ## AI Signature Verification Engine — How It Works
 
@@ -277,38 +343,8 @@ The following functional pages still reside on the legacy PHP server:
 - `putsig.php`: Legacy standalone signature capture utility.
 - `capture_browse.php`: Raw filesystem image browser (partially bypassed by modern prefetch logic).
 
+---
+
 Thank you.
-
-
-How to Run The Application
-To run this application, follow the steps below:
-
-1. Start the Backend API
-First, ensure you have the Python backend running locally on port 8130:
-
-Copy code
-
-backend\venv\Scripts\python backend/main.py
-The backend will start and serve the AI Signature Verification Engine on http://127.0.0.1:8130.
-
-2. Start the Frontend Application
-Open a new terminal, navigate to the frontend directory, and run:
-
-Copy code
-
-npm run dev
-The frontend will start on http://localhost:8089.
-
-3. Access the Application
-Open your browser and navigate to http://localhost:8089.
-
-Usage Examples
-Capture Mode: Navigate to http://localhost:8089/imaging/capture-123456-admin-2024-04-21
-Update Mode: Navigate to http://localhost:8089/imaging/update-123456-B001-M1-50000-admin-2024-04-21
-Approval: Navigate to http://localhost:8089/imaging/image_approval_screen-123456-B001-C001-supervisor-PC-10.0.0.1
-Enquiry: Navigate to http://localhost:8089/imaging/viewimage-000123
-Note: Ensure the backend is running before accessing any of these routes.
-
-Thank you...
 
 

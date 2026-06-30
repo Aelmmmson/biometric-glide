@@ -15,11 +15,11 @@ export function Review() {
 
   const config = state.activityConfig;
 
-  const hasPhotoSignature = state.submissions.photoSignature;
+  const hasPhotoSignature = !!(state.data.photo || state.data.signature);
   const hasIdentification =
-    config?.identification.status && state.submissions.identification;
+    !!(config?.identification.status && (state.data.idFront || state.data.idBack));
   const hasFingerprint =
-    config?.fingerprint.status && state.submissions.thumbprints;
+    !!(config?.fingerprint.status && (state.data.thumbprint1 || state.data.thumbprint2));
 
   const submittedCount =
     Number(hasPhotoSignature) +

@@ -25,23 +25,23 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
   const [imageData, setImageData] = useState<EnquiryImagesResponse['data']>(null);
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  
+
   const fetchImages = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       let result: EnquiryImagesResponse;
-      
+
       if (fetchType === 'account') {
         result = await viewRelationDetailsFromAccount(id);
         // Account-specific error handling
         if (result.status === 'error' && result.message?.toLowerCase().includes('decrypt') || result.message?.toLowerCase().includes('invalid credential')) {
           setError('Invalid or expired account credential');
-          toast({ 
-            title: "Access Denied", 
+          toast({
+            title: "Access Denied",
             description: "The provided account credential could not be resolved.",
-            variant: "destructive" 
+            variant: "destructive"
           });
           setLoading(false);
           return;
@@ -51,32 +51,32 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
       } else {
         result = await enquiryImages(id);
       }
-      
+
       if (result.status === 'success' && result.data) {
         setImageData(result.data);
         toast({ title: "Images retrieved successfully!" });
       } else if (result.status === 'not_found') {
         setError(`No images found for this ${fetchType === 'account' ? 'account' : fetchType === 'getimages' ? 'account' : 'relation'}`);
-        toast({ 
-          title: "No images found", 
+        toast({
+          title: "No images found",
           description: result.message,
-          variant: "destructive" 
+          variant: "destructive"
         });
       } else {
         setError(result.message || 'Failed to retrieve images');
-        toast({ 
-          title: "Error", 
+        toast({
+          title: "Error",
           description: result.message,
-          variant: "destructive" 
+          variant: "destructive"
         });
       }
     } catch (err) {
       console.error('Error fetching images:', err);
       setError('An unexpected error occurred');
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: "Failed to retrieve images",
-        variant: "destructive" 
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
   const renderImageCard = (imageData: string | undefined, title: string, icon: React.ElementType) => {
     const Icon = icon;
     const imageUrl = getImageUrl(imageData);
-    
+
     // Only render if image data exists
     if (!imageUrl) return null;
 
@@ -123,8 +123,8 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
           <h4 className="font-semibold text-xs">{title}</h4>
         </div>
         <div className="bg-muted rounded flex-1 flex items-center justify-center">
-          <img 
-            src={imageUrl} 
+          <img
+            src={imageUrl}
             alt={title}
             className="max-h-full max-w-full object-contain rounded"
           />
@@ -173,9 +173,17 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
           className="text-center mb-8"
         >
           <h1 className="text-3xl font-bold mb-2">Customer Account Biometric</h1>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <p className="text-muted-foreground">{fetchType === 'account' ? 'Account Credential:' : 'Customer Account ID:'}</p>
-            <Badge variant="secondary" className="text-base">{id}</Badge>
+          <div className="flex flex-col items-center justify-center gap-2 mb-2">
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-muted-foreground">{fetchType === 'account' ? 'Account Credential:' : 'Relation Number:'}</p>
+              <Badge variant="secondary" className="text-base font-mono">{id}</Badge>
+            </div>
+            {imageData?.account_name && (
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-muted-foreground">Account Name:</p>
+                <span className="font-bold text-slate-800 text-lg">{imageData.account_name}</span>
+              </div>
+            )}
           </div>
           {fetchType !== 'account' && imageData && imageData.account_mandate && imageData.account_mandate.trim() !== '' && (
             <div className="flex items-center justify-center gap-2">
@@ -198,16 +206,21 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
           ) : (
             <Accordion type="multiple" defaultValue={defaultValues} className="w-full">
               {imageData.enq_details.map((detail, index) => {
-                const hasBiometrics = 
-                  detail.pix?.trim() || 
-                  detail.signature?.trim() || 
-                  detail.fingerprint_one?.trim() || 
+                const hasBiometrics =
+                  detail.pix?.trim() ||
+                  detail.signature?.trim() ||
+                  detail.fingerprint_one?.trim() ||
                   detail.fingerprint_two?.trim();
                 return (
                   <AccordionItem key={detail.relation_no} value={`item-${index}`}>
                     <AccordionTrigger className="hover:no-underline">
                       <div className="flex items-center justify-between w-full">
-                        <h2 className="text-xl font-bold">Relation No: {detail.relation_no}</h2>
+                        <div className="flex items-center gap-2 text-left">
+                          <h2 className="text-xl font-bold">Relation No: {detail.relation_no}</h2>
+                          {detail.relation_name && (
+                            <span className="text-base font-semibold text-slate-500">({detail.relation_name})</span>
+                          )}
+                        </div>
                         <Badge className="ml-4">View Only</Badge>
                       </div>
                     </AccordionTrigger>
@@ -256,7 +269,7 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
 
         {/* Full Image Modal */}
         {selectedImage && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
             onClick={() => setSelectedImage(null)}
           >
@@ -277,8 +290,8 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
                 </Button>
               </div>
               <div className="bg-muted rounded-lg p-4 flex items-center justify-center">
-                <img 
-                  src={selectedImage.url} 
+                <img
+                  src={selectedImage.url}
                   alt={selectedImage.title}
                   className="max-w-full max-h-[70vh] object-contain rounded"
                 />

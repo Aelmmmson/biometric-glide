@@ -181,8 +181,6 @@ export function ProgressSidebar({
                 ) : isUpdateMode ? (
                   <>
                     <ParameterRow label="Batch" value={params.batch} />
-                    <ParameterRow label="Mandate" value={params.mandate} />
-                    <ParameterRow label="Limit" value={params.limit} />
                     <ParameterRow label="Captured By" value={params.capturedBy} />
                     <ParameterRow label="Captured Date" value={params.capturedDate} />
                   </>

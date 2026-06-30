@@ -57,12 +57,16 @@ const Index = () => {
 
   const completedSteps = useMemo(() => {
     const c: number[] = [];
-    if (state.submissions.photoSignature) c.push(1);
-    if (state.submissions.identification && state.activityConfig?.identification.status) c.push(2);
-    if (state.submissions.thumbprints && state.activityConfig?.fingerprint.status) c.push(3);
+    const hasPhotoSignature = !!(state.data.photo || state.data.signature);
+    const hasIdentification = !!(state.data.idFront || state.data.idBack);
+    const hasFingerprint = !!(state.data.thumbprint1 || state.data.thumbprint2);
+
+    if (hasPhotoSignature) c.push(1);
+    if (hasIdentification && state.activityConfig?.identification.status) c.push(2);
+    if (hasFingerprint && state.activityConfig?.fingerprint.status) c.push(3);
     if (state.isCompleted) c.push(4);
     return c;
-  }, [state.submissions, state.activityConfig, state.isCompleted]);
+  }, [state.data, state.activityConfig, state.isCompleted]);
 
   if (!state.isActivityConfigLoaded) {
     return (
