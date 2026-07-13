@@ -84,6 +84,8 @@ export function PhotoSignature({
     return '';
   });
 
+  const [isAuthModalSaved, setIsAuthModalSaved] = useState(false);
+
   const [photoMode, setPhotoMode] = useState<'capture' | 'upload'>('capture');
   const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
   const [sigCaptured, setSigCaptured] = useState<{ image: HTMLImageElement; sig: string } | null>(null);
@@ -444,9 +446,14 @@ export function PhotoSignature({
               const rNo = getRelationNumber();
               if (!rNo) return null;
 
-              const categoryLetter = relationDetails?.signatoryLevel
-                ? relationDetails.signatoryLevel.replace('Category ', '').trim()
-                : (state.params.limit && state.params.limit.includes('Category') ? state.params.limit.replace('Category ', '').trim() : '');
+              // Dynamically extract Category and Limit from inputs, URL params, or loaded standalone relation details
+              const categoryLetter = inputMandate
+                ? inputMandate.replace('Category ', '').trim()
+                : (state.params.mandate && state.params.mandate.includes('Category') ? state.params.mandate.replace('Category ', '').trim() : (relationDetails?.signatoryLevel ? relationDetails.signatoryLevel.replace('Category ', '').trim() : ''));
+
+              const displayLimit = inputLimit || state.params.limit || (relationDetails?.amtlimit ? relationDetails.amtlimit.toString() : '');
+              const numericLimit = parseFloat(displayLimit);
+              const formattedLimit = isNaN(numericLimit) ? (displayLimit === '-' || displayLimit === '--' ? '' : displayLimit) : new Intl.NumberFormat('en-US').format(numericLimit);
 
               return (
                 <div className="p-3 space-y-1 text-slate-700 min-w-[200px] text-xs shrink-0 animate-in fade-in duration-200 text-left">
@@ -454,46 +461,40 @@ export function PhotoSignature({
                     <span>Relation Details</span>
                     <span className="font-mono text-[10px] text-slate-500 font-normal normal-case">({rNo})</span>
                   </div>
-                  {relationDetails ? (
-                    <>
-                      <div className="font-bold text-slate-900 text-[13px] leading-tight mt-1">
-                        {`${relationDetails.firstName} ${relationDetails.otherName ? relationDetails.otherName + ' ' : ''}${relationDetails.surname}`.trim()}
-                      </div>
-                      {state.params.mandate && (
-                        <div className="text-[11px] text-slate-500 mt-1">
-                          Mandate: <span className="font-semibold text-slate-700">{state.params.mandate}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-start gap-2 text-[11px] text-slate-500 mt-1">
-                        {categoryLetter && (
-                          <span>
-                            Category: <span className="font-semibold text-slate-700">{categoryLetter}</span>
-                          </span>
-                        )}
-                        {categoryLetter && relationDetails.amtlimit !== undefined && (
-                          <span className="text-slate-300">•</span>
-                        )}
-                        {relationDetails.amtlimit !== undefined && (
-                          <span>
-                            Limit: <span className="font-mono font-semibold text-slate-700">{new Intl.NumberFormat('en-US').format(relationDetails.amtlimit)}</span>
-                          </span>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {state.params.mandate && (
-                        <div className="text-[11px] text-slate-500 mt-1">
-                          Mandate: <span className="font-semibold text-slate-700">{state.params.mandate}</span>
-                        </div>
-                      )}
-                      {state.params.limit && (
-                        <div className="text-[11px] text-slate-500">
-                          Limit: <span className="font-mono font-semibold text-slate-700">{state.params.limit}</span>
-                        </div>
-                      )}
-                    </>
+                  {relationDetails && (
+                    <div className="font-bold text-slate-900 text-[13px] leading-tight mt-1 mb-1">
+                      {`${relationDetails.firstName} ${relationDetails.otherName ? relationDetails.otherName + ' ' : ''}${relationDetails.surname}`.trim()}
+                    </div>
                   )}
+                  {state.params.mandate && (
+                    <div className="text-[11px] text-slate-500 mt-1">
+                      Mandate: <span className="font-semibold text-slate-700">{state.params.mandate}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-start flex-wrap gap-2 text-[11px] text-slate-500 mt-1">
+                    {categoryLetter && (
+                      <span>
+                        Category: <span className="font-semibold text-slate-700">{categoryLetter}</span>
+                      </span>
+                    )}
+                    {categoryLetter && formattedLimit && (
+                      <span className="text-slate-300">•</span>
+                    )}
+                    {formattedLimit && (
+                      <span>
+                        Limit: <span className="font-mono font-semibold text-slate-700">{formattedLimit}</span>
+                      </span>
+                    )}
+                    {showAuthInputs && isAuthModalSaved && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAuthModalSaved(false)}
+                        className="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                      >
+                        (Modify)
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })()}
@@ -1021,45 +1022,66 @@ export function PhotoSignature({
           />
         )}
 
-        {/* Signatory Level and Limit Inputs (displayed only if missing from integrated system URL) */}
-        {showAuthInputs && (
-          <div className="mt-8 p-6 bg-slate-50 border border-slate-100 rounded-2xl space-y-4 text-left animate-in fade-in duration-300">
-            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
-              <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
-                <Award className="w-3.5 h-3.5" />
-              </div>
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Signatory Authorization Settings</h4>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Signatory Level (Category) <span className="text-rose-500">*</span></label>
-                <select
-                  value={inputMandate}
-                  onChange={(e) => setInputMandate(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">Select Category</option>
-                  <option value="Category A">Category A</option>
-                  <option value="Category B">Category B</option>
-                  <option value="Category C">Category C</option>
-                  <option value="Category D">Category D</option>
-                </select>
+        {/* Signatory Level and Limit Modal Overlay (displayed only if missing from integrated system URL and not saved) */}
+        {showAuthInputs && !isAuthModalSaved && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-md bg-white border border-slate-100 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-left"
+            >
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">Signatory Authorization Settings</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Please define signatory level and limit to proceed</p>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Authorized Limit <span className="text-rose-500">*</span></label>
-                <input
-                  type="number"
-                  placeholder="Enter authorized limit amount"
-                  value={inputLimit}
-                  onChange={(e) => setInputLimit(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Signatory Level (Category) <span className="text-rose-500">*</span></label>
+                  <select
+                    value={inputMandate}
+                    onChange={(e) => setInputMandate(e.target.value)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Category A">Category A</option>
+                    <option value="Category B">Category B</option>
+                    <option value="Category C">Category C</option>
+                    <option value="Category D">Category D</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Authorized Limit <span className="text-rose-500">*</span></label>
+                  <input
+                    type="number"
+                    placeholder="Enter limit amount"
+                    value={inputLimit}
+                    onChange={(e) => setInputLimit(e.target.value)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
               </div>
-            </div>
+
+              <div className="pt-2">
+                <Button
+                  disabled={!inputMandate || !inputLimit || parseFloat(inputLimit) < 0}
+                  onClick={() => setIsAuthModalSaved(true)}
+                  className="w-full h-11 rounded-xl gradient-primary text-xs font-bold shadow-button transition-all"
+                >
+                  Save & Continue
+                </Button>
+              </div>
+            </motion.div>
           </div>
         )}
+
+
 
         {/* Navigation and Submit Button */}
         <div className="flex items-center justify-between mt-8">

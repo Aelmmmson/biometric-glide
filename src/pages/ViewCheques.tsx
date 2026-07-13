@@ -596,9 +596,9 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
     return (
       <div className="h-screen bg-background flex flex-col items-center justify-center p-8 font-urbanist text-center">
           <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
-          <h2 className="text-2xl font-bold mb-2 text-primary">Access Protocol Error</h2>
+          <h2 className="text-2xl font-bold mb-2 text-primary">Cheque Load Failed</h2>
           <p className="text-muted-foreground text-sm max-w-sm mb-8">{error}</p>
-          <Button onClick={fetchChequeData} className="rounded-full px-8 bg-primary text-white">Retry Hub Protocol</Button>
+          <Button onClick={fetchChequeData} className="rounded-full px-8 bg-primary text-white">Retry Loading</Button>
       </div>
     );
   }

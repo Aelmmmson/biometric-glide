@@ -132,9 +132,28 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
       setSearchResults(result);
 
       if (result.status === 'success') {
+        const hasData = result.data && (
+          (result.data.approved && (
+            !!result.data.approved.photo ||
+            !!result.data.approved.accsign ||
+            !!result.data.approved.thumbprint1 ||
+            !!result.data.approved.thumbprint2 ||
+            (result.data.approved.documents && result.data.approved.documents.length > 0)
+          )) ||
+          (result.data.unapproved && (
+            !!result.data.unapproved.photo ||
+            !!result.data.unapproved.accsign ||
+            !!result.data.unapproved.thumbprint1 ||
+            !!result.data.unapproved.thumbprint2 ||
+            (result.data.unapproved.documents && result.data.unapproved.documents.length > 0)
+          ))
+        );
+
         toast({
-          title: "Success",
-          description: result.message,
+          title: hasData ? "Success" : "No Biometrics Captured",
+          description: hasData
+            ? result.message
+            : "Signatory details retrieved, but no biometrics images (photo, signature, voter ID, fingerprints) are captured for this record yet.",
         });
       } else if (result.status === 'not_found') {
         toast({

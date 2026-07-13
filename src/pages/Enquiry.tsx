@@ -60,7 +60,20 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
 
       if (result.status === 'success' && result.data) {
         setImageData(result.data);
-        toast({ title: "Biometric profiles loaded" });
+        const details = result.data.enq_details || [];
+        const hasImages = details.some(d => 
+          !!d.pix || 
+          !!d.signature || 
+          !!d.fingerprint_one || 
+          !!d.fingerprint_two || 
+          (d.docs && d.docs.length > 0)
+        );
+        toast({
+          title: hasImages ? "Biometric profiles loaded" : "No Biometrics Captured",
+          description: hasImages
+            ? "Signatory profiles and biometrics retrieved successfully."
+            : "Signatory details retrieved, but no biometrics images (photo, signature, voter ID, fingerprints) are captured for this account yet."
+        });
       } else if (result.status === 'not_found') {
         setError(`No biometric profile found for this ${fetchType === 'account' ? 'account' : fetchType === 'getimages' ? 'account' : 'relation'}`);
       } else {
