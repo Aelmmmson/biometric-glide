@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { useBiometric } from "@/hooks/useBiometric";
 import { toast } from "@/hooks/use-toast";
+import { handleSystemError } from "@/lib/errorHandler";
 import { ImageEditor } from "@/components/ImageEditor";
 import {
   captureIdentification,
@@ -232,13 +233,10 @@ export function Identification({
         });
       }
     } catch (error) {
-      console.error("Error submitting identification:", error);
+      const uiError = handleSystemError(error, "Identification.handleSubmit");
       toast({
-        title: "Submission Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
+        title: uiError.alert,
+        description: uiError.action,
         variant: "destructive",
       });
     } finally {
@@ -1127,7 +1125,7 @@ export function Identification({
                   Submitting...
                 </>
               ) : (
-                "Submit Identification"
+                "Next"
               )}
             </Button>
 

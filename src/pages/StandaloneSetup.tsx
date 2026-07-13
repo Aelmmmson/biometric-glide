@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Settings, Plus, Trash2, Edit, User, Camera, 
-  Signature, Fingerprint, Search, Landmark, 
-  ArrowRight, ShieldAlert, Calendar, DollarSign, 
+import {
+  Settings, Plus, Trash2, Edit, User, Camera,
+  Signature, Fingerprint, Search, Landmark,
+  ArrowRight, ShieldAlert, Calendar, DollarSign,
   ChevronRight, Check, CheckCircle2, ChevronLeft, Eye, RefreshCw, AlertCircle, Info, FileText, X,
   PenTool, ScanFace, BadgeCheck, ShieldCheck
 } from 'lucide-react';
@@ -16,14 +16,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
-import { 
-  type StandaloneAccount, 
+import {
+  type StandaloneAccount,
   type StandaloneRelation,
   type ActivityConfig,
   fetchActivityConfig,
   getImagesByAccount,
   searchImages
 } from '@/services/api';
+import { handleSystemError } from '@/lib/errorHandler';
 
 const ACCOUNT_MANDATES = [
   'Sole Signatory',
@@ -308,9 +309,11 @@ export default function StandaloneSetup() {
         setFoundExistingAccount(false);
         setAccName('');
       } else if (target === 'create') {
-        setActiveAccNo('');
-        setAccName('');
-        setFoundExistingAccount(false);
+        if (currentStep !== 3) {
+          setActiveAccNo('');
+          setAccName('');
+          setFoundExistingAccount(false);
+        }
       }
     }
   };
@@ -345,7 +348,7 @@ export default function StandaloneSetup() {
   // Local Accounts & Relations Cache
   const [accounts, setAccounts] = useState<Record<string, StandaloneAccount>>({});
   const [relations, setRelations] = useState<Record<string, StandaloneRelation>>({});
-  
+
   // Account Form / Search state
   const [searchAccNo, setSearchAccNo] = useState('');
   const [activeAccNo, setActiveAccNo] = useState('');
@@ -361,6 +364,7 @@ export default function StandaloneSetup() {
   const [amtLimit, setAmtLimit] = useState('50000');
   const [sigLevel, setSigLevel] = useState(SIGNATORY_LEVELS[0]);
   const [editingRelNo, setEditingRelNo] = useState<string | null>(null);
+  const [editingAccNo, setEditingAccNo] = useState<string | null>(null);
   const [currentOnboardingRelNo, setCurrentOnboardingRelNo] = useState<string | null>(null);
   const [subStep, setSubStep] = useState<1 | 2 | 3>(1);
   const [existingCustomer, setExistingCustomer] = useState<StandaloneRelation | null>(null);
@@ -408,7 +412,7 @@ export default function StandaloneSetup() {
     isOpen: false,
     title: '',
     description: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
     variant: 'blue'
   });
 
@@ -463,7 +467,7 @@ export default function StandaloneSetup() {
     // 1. Initial load from local storage
     const localJson = localStorage.getItem(`standalone_biometrics_${relNo}`);
     const localData = localJson ? JSON.parse(localJson) : {};
-    
+
     // Set initial data immediately so the UI is responsive
     setViewingBiometricsData(localData);
 
@@ -502,41 +506,41 @@ export default function StandaloneSetup() {
       const currentRels: Record<string, StandaloneRelation> = storedRels ? JSON.parse(storedRels) : relations;
       const accRelations = Object.values(currentRels).filter((r: StandaloneRelation) => r.accountNumber === accNo);
       if (accRelations.length === 0) return;
-      
+
       const updatedRels = { ...currentRels };
       let hasChanges = false;
-      
+
       await Promise.all(accRelations.map(async (rel: StandaloneRelation) => {
         try {
           const res = await searchImages(rel.relationNo);
           if (res.status === 'success' && res.data) {
             const approved = res.data.approved || {};
             const unapproved = res.data.unapproved || {};
-            
+
             const hasPhoto = !!(approved.photo || unapproved.photo);
             const hasSig = !!(approved.accsign || unapproved.accsign);
-            const hasId = !!((approved.documents && approved.documents.length > 0) || 
-                             (unapproved.documents && unapproved.documents.length > 0));
+            const hasId = !!((approved.documents && approved.documents.length > 0) ||
+              (unapproved.documents && unapproved.documents.length > 0));
             const hasFp = !!(approved.thumbprint1 || approved.thumbprint2 || unapproved.thumbprint1 || unapproved.thumbprint2);
-            
+
             if (hasPhoto && !rel.photoCaptured) { updatedRels[rel.relationNo].photoCaptured = true; hasChanges = true; }
             if (hasSig && !rel.signatureCaptured) { updatedRels[rel.relationNo].signatureCaptured = true; hasChanges = true; }
             if (hasId && !rel.idCaptured) { updatedRels[rel.relationNo].idCaptured = true; hasChanges = true; }
             if (hasFp && !rel.fingerprintCaptured) { updatedRels[rel.relationNo].fingerprintCaptured = true; hasChanges = true; }
           }
         } catch (e) {
-          console.warn(`Failed to sync relation ${rel.relationNo}:`, e);
+          handleSystemError(e, `StandaloneSetup.syncAccountBiometrics (relation ${rel.relationNo})`);
         }
       }));
-      
+
       if (hasChanges) {
         localStorage.setItem('standalone_relations', JSON.stringify(updatedRels));
         setRelations(updatedRels);
       }
     } catch (e) {
-      console.warn('syncAccountBiometrics error:', e);
+      handleSystemError(e, 'StandaloneSetup.syncAccountBiometrics');
     }
-  }, [relations]);   
+  }, [relations]);
 
   // Sync biometrics when active account changes
   useEffect(() => {
@@ -729,10 +733,10 @@ export default function StandaloneSetup() {
     }
 
     const isDuplicate = Object.values(relations).some(
-      r => r.accountNumber === activeAccNo && 
-           !r.isTemp && 
-           r.nationalId.trim().toLowerCase() === nationalId.trim().toLowerCase() && 
-           r.relationNo !== editingRelNo
+      r => r.accountNumber === activeAccNo &&
+        !r.isTemp &&
+        r.nationalId.trim().toLowerCase() === nationalId.trim().toLowerCase() &&
+        r.relationNo !== editingRelNo
     );
 
     if (isDuplicate) {
@@ -753,7 +757,7 @@ export default function StandaloneSetup() {
         try {
           mergedBio = JSON.parse(srcBiometricsJson);
         } catch (e) {
-          console.error('Failed to parse existing customer biometrics', e);
+          handleSystemError(e, 'StandaloneSetup.saveSignatory.parseExistingBiometrics');
         }
       }
     }
@@ -761,12 +765,12 @@ export default function StandaloneSetup() {
     // Check if we have captured biometrics for this relation in localStorage or if it is from existingCustomer
     const biometricsJson = localStorage.getItem(`standalone_biometrics_${finalRelNo}`);
     const localBio = biometricsJson ? JSON.parse(biometricsJson) : {};
-    
+
     const finalBio = { ...mergedBio, ...localBio };
     if (Object.keys(finalBio).length > 0) {
       localStorage.setItem(`standalone_biometrics_${finalRelNo}`, JSON.stringify(finalBio));
     }
-    
+
     const hasPhoto = !!(finalBio.photo || existingCustomer?.photoCaptured);
     const hasSig = !!(finalBio.signature || existingCustomer?.signatureCaptured);
     const hasId = !!(finalBio.idFront || finalBio.idBack || existingCustomer?.idCaptured);
@@ -908,7 +912,7 @@ export default function StandaloneSetup() {
       setTempRelNo(finalRelNo);
       setCurrentOnboardingRelNo(finalRelNo);
     }
-    
+
     // Save temporary details to standalone_relations so that the capture screen has the metadata
     const updatedRels = { ...relations };
     updatedRels[finalRelNo] = {
@@ -1067,21 +1071,21 @@ export default function StandaloneSetup() {
   const activeRelations = Object.values(relations).filter(r => r.accountNumber === activeAccNo && !r.isTemp);
 
   const isDuplicateNationalId = nationalId.trim() !== '' && Object.values(relations).some(
-    r => r.accountNumber === activeAccNo && 
-         !r.isTemp && 
-         r.nationalId.trim().toLowerCase() === nationalId.trim().toLowerCase() && 
-         r.relationNo !== editingRelNo
+    r => r.accountNumber === activeAccNo &&
+      !r.isTemp &&
+      r.nationalId.trim().toLowerCase() === nationalId.trim().toLowerCase() &&
+      r.relationNo !== editingRelNo
   );
 
   const steps = landingView === 'search'
     ? [
-        { number: 1, label: 'Account Enquiry', desc: 'Locate profile & specimens', icon: Search },
-        { number: 3, label: 'Modify Signatories', desc: 'Update, approve or modify', icon: User }
-      ]
+      { number: 1, label: 'Account Enquiry', desc: 'Locate profile & biometrics', icon: Search },
+      { number: 3, label: 'Modify Signatories', desc: 'Update, approve or modify', icon: User }
+    ]
     : [
-        { number: 1, label: 'Create Account', desc: 'Configure account details', icon: Landmark },
-        { number: 3, label: 'Signatory Onboarding', desc: 'Capture & manage relations', icon: User }
-      ];
+      { number: 1, label: 'Create Account', desc: 'Configure account details', icon: Landmark },
+      { number: 3, label: 'Signatory Onboarding', desc: 'Capture & manage relations', icon: User }
+    ];
 
   const isFormComplete = nationalId.trim() !== '' && firstName.trim() !== '' && surname.trim() !== '';
 
@@ -1143,16 +1147,16 @@ export default function StandaloneSetup() {
       if (biometricsJson) {
         const localBio = JSON.parse(biometricsJson);
         return !!(
-          localBio.photo || 
-          localBio.signature || 
-          localBio.idFront || 
-          localBio.idBack || 
-          localBio.thumbprint1 || 
+          localBio.photo ||
+          localBio.signature ||
+          localBio.idFront ||
+          localBio.idBack ||
+          localBio.thumbprint1 ||
           localBio.thumbprint2
         );
       }
     } catch (e) {
-      // ignore
+      handleSystemError(e, 'StandaloneSetup.checkAnyCaptureConfirmed');
     }
     return false;
   }, [relations, editingRelNo, tempRelNo, currentOnboardingRelNo]);
@@ -1164,7 +1168,7 @@ export default function StandaloneSetup() {
       <div className="relative flex flex-col items-center justify-center min-h-[55vh] max-w-2xl mx-auto space-y-10 px-4 py-8 animate-in fade-in duration-500">
         {/* Cinematic Backdrop Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-blue-500/5 to-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-        
+
         <div className="text-center space-y-4 relative z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50/80 border border-blue-100/50 text-blue-600 text-xs font-semibold tracking-wide backdrop-blur-sm shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-505 bg-blue-500 animate-pulse" />
@@ -1180,13 +1184,16 @@ export default function StandaloneSetup() {
 
         <div className="w-full space-y-6 relative z-10">
           {/* Main Call to Action: Create New Account */}
-          <div 
-            onClick={() => navigateTo('create')}
+          <div
+            onClick={() => {
+              setEditingAccNo(null);
+              navigateTo('create');
+            }}
             className="group relative p-8 rounded-2xl border border-slate-200/80 bg-white hover:border-blue-400 hover:shadow-[0_20px_40px_-15px_rgba(59,130,246,0.12)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer shadow-sm overflow-hidden"
           >
             {/* Subtle light leak effect on hover */}
             <div className="absolute -inset-px bg-gradient-to-r from-blue-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            
+
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
               <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 shadow-sm">
                 <Plus className="w-7 h-7" />
@@ -1204,7 +1211,7 @@ export default function StandaloneSetup() {
           </div>
 
           {/* Secondary Action: Search & Manage Accounts */}
-          <div 
+          <div
             onClick={() => navigateTo('search')}
             className="group p-5 rounded-2xl border border-slate-200/50 bg-slate-50/40 hover:bg-slate-50/80 hover:border-slate-300 hover:shadow-md transition-all duration-300 cursor-pointer flex items-center justify-between"
           >
@@ -1214,7 +1221,7 @@ export default function StandaloneSetup() {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-800">Search &amp; Manage Existing Accounts</h4>
-                <p className="text-[11px] text-slate-400">View specimen cards, run approval workflows, or update signatures.</p>
+                <p className="text-[11px] text-slate-400">View biometric profiles, run approval workflows, or update signatures.</p>
               </div>
             </div>
             <div className="text-slate-400 group-hover:text-slate-700 transition-colors">
@@ -1227,7 +1234,8 @@ export default function StandaloneSetup() {
   };
 
   const renderLandingCreate = () => {
-    const isAccountExist = !!activeAccNo.trim() && !!accounts[activeAccNo.trim()];
+    const isEditing = !!editingAccNo && !!accounts[editingAccNo];
+    const isAccountExist = !!activeAccNo.trim() && activeAccNo.trim() !== editingAccNo && !!accounts[activeAccNo.trim()];
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -1236,7 +1244,7 @@ export default function StandaloneSetup() {
         triggerAlert('Validation Error', 'Account number is required.', 'destructive');
         return;
       }
-      if (accounts[cleanAcc]) {
+      if (isAccountExist) {
         triggerAlert('Duplicate Error', 'This account number already exists and cannot be used.', 'destructive');
         return;
       }
@@ -1245,19 +1253,41 @@ export default function StandaloneSetup() {
         return;
       }
 
-      // Initialize account details in state (do not write to localStorage yet)
-      const updatedAccs = {
-        ...accounts,
-        [cleanAcc]: {
-          accountNumber: cleanAcc,
-          mandate: accMandate,
-          accountName: accName.trim()
-        }
+      // Initialize account details in state (do not write to localStorage yet unless editing)
+      const updatedAccs = { ...accounts };
+
+      // If we are editing and they changed the account number, migrate relations & delete old key
+      if (isEditing && editingAccNo && cleanAcc !== editingAccNo) {
+        delete updatedAccs[editingAccNo];
+
+        const updatedRels = { ...relations };
+        Object.keys(updatedRels).forEach(key => {
+          if (updatedRels[key].accountNumber === editingAccNo) {
+            updatedRels[key].accountNumber = cleanAcc;
+          }
+        });
+        setRelations(updatedRels);
+        localStorage.setItem('standalone_relations', JSON.stringify(updatedRels));
+      }
+
+      updatedAccs[cleanAcc] = {
+        accountNumber: cleanAcc,
+        mandate: accMandate,
+        accountName: accName.trim()
       };
 
       setAccounts(updatedAccs);
-      triggerAlert('Account Details Initialized', `Account #${cleanAcc} details registered.`, 'success');
-      
+      triggerAlert(
+        isEditing ? 'Account Details Updated' : 'Account Details Initialized', 
+        `Account #${cleanAcc} details registered.`, 
+        'success'
+      );
+
+      if (isEditing) {
+        localStorage.setItem('standalone_accounts', JSON.stringify(updatedAccs));
+      }
+
+      setEditingAccNo(cleanAcc);
       navigateTo('step3');
     };
 
@@ -1267,9 +1297,13 @@ export default function StandaloneSetup() {
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center mx-auto shadow-sm">
             <Landmark className="w-5 h-5" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Create Account</h2>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+            {isEditing ? 'Edit Mandate' : 'Create Account'}
+          </h2>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Establish a new account profile and define mandate protocols.
+            {isEditing 
+              ? 'Modify Signing Mandate Instruction and Account Name.' 
+              : 'Establish a new account profile and define mandate protocols.'}
           </p>
         </div>
 
@@ -1331,7 +1365,7 @@ export default function StandaloneSetup() {
               disabled={!activeAccNo.trim() || !accName.trim() || isAccountExist}
               className="flex-1 bg-blue-600 text-white hover:bg-blue-700 font-bold h-10 text-xs rounded-[7px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save &amp; Continue
+              Next
             </Button>
           </div>
         </form>
@@ -1466,9 +1500,9 @@ export default function StandaloneSetup() {
                     <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center animate-in fade-in">
                       <Eye className="w-4.5 h-4.5 text-blue-600" />
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900">Account Enquiry Specimen</h4>
+                    <h4 className="text-sm font-bold text-slate-900">Account Enquiry Profile</h4>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      View all approved biometric specimens on file for this account — including portraits, signatures, fingerprints, and documents for all signatories.
+                      View all approved biometric records on file for this account — including portraits, signatures, fingerprints, and documents for all signatories.
                     </p>
                   </div>
                   <div className="pt-3 border-t border-slate-100">
@@ -1476,7 +1510,7 @@ export default function StandaloneSetup() {
                       onClick={handleLaunchEnquiryAccount}
                       className="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs h-9 px-4 rounded-[7px] font-bold flex items-center justify-center gap-2 shadow-sm"
                     >
-                      <Eye className="w-3.5 h-3.5" /> Launch Enquiry Specimen
+                      <Eye className="w-3.5 h-3.5" /> Launch Account Enquiry
                     </Button>
                   </div>
                 </div>
@@ -1521,31 +1555,29 @@ export default function StandaloneSetup() {
     return (
       <TooltipProvider delayDuration={150}>
         <div className="h-screen w-full overflow-hidden bg-background text-foreground antialiased selection:bg-blue-100">
-          
+
           {createPortal(
             <AnimatePresence>
               {alertBanner.isOpen && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: -50, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.95 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
-                  className="fixed top-6 right-6 z-50 w-full max-w-md px-4"
+                  className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
                 >
-                  <div className={`flex items-start gap-3 p-4 rounded-[7px] shadow-2xl border backdrop-blur-md ${
-                    alertBanner.variant === 'success' 
-                      ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800' 
-                      : alertBanner.variant === 'destructive' 
-                      ? 'bg-rose-50/95 border-rose-200 text-rose-800' 
-                      : 'bg-blue-50/95 border-blue-200 text-blue-800'
-                  }`}>
-                    <AlertCircle className={`w-5 h-5 mt-0.5 shrink-0 ${
-                      alertBanner.variant === 'success' 
-                        ? 'text-emerald-500' 
-                        : alertBanner.variant === 'destructive' 
-                        ? 'text-rose-500' 
-                        : 'text-blue-500'
-                    }`} />
+                  <div className={`flex items-start gap-3 p-4 rounded-[7px] shadow-2xl border backdrop-blur-md ${alertBanner.variant === 'success'
+                      ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800'
+                      : alertBanner.variant === 'destructive'
+                        ? 'bg-rose-50/95 border-rose-200 text-rose-800'
+                        : 'bg-blue-50/95 border-blue-200 text-blue-800'
+                    }`}>
+                    <AlertCircle className={`w-5 h-5 mt-0.5 shrink-0 ${alertBanner.variant === 'success'
+                        ? 'text-emerald-500'
+                        : alertBanner.variant === 'destructive'
+                          ? 'text-rose-500'
+                          : 'text-blue-500'
+                      }`} />
                     <div>
                       <h4 className="font-bold text-sm leading-snug">{alertBanner.title}</h4>
                       <p className="text-xs mt-0.5 leading-normal opacity-90">{alertBanner.description}</p>
@@ -1560,7 +1592,7 @@ export default function StandaloneSetup() {
           {/* CUSTOM CONFIRMATION MODAL OVERLAY */}
           <AnimatePresence>
             {confirmModal.isOpen && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -1573,11 +1605,10 @@ export default function StandaloneSetup() {
                   className="w-full max-w-sm bg-white rounded-[7px] border border-slate-200 p-6 shadow-2xl space-y-4"
                 >
                   <div className="flex gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
-                      confirmModal.variant === 'rose'
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${confirmModal.variant === 'rose'
                         ? 'bg-rose-50 border-rose-100 text-rose-500'
                         : 'bg-blue-50 border-blue-100 text-blue-500'
-                    }`}>
+                      }`}>
                       <ShieldAlert className="w-5 h-5" />
                     </div>
                     <div>
@@ -1587,23 +1618,22 @@ export default function StandaloneSetup() {
                   </div>
 
                   <div className="flex justify-end gap-2.5 pt-1">
-                    <Button 
-                      onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} 
+                    <Button
+                      onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
                       variant="outline"
                       size="sm"
                       className="h-8.5 px-4 font-bold border-slate-200 text-slate-600 hover:bg-slate-50 text-xs rounded-[7px]"
                     >
                       Cancel
                     </Button>
-                    <Button 
+                    <Button
                       onClick={confirmModal.onConfirm}
                       variant={confirmModal.variant === 'rose' ? 'destructive' : 'default'}
                       size="sm"
-                      className={`h-8.5 px-4 py-1 font-bold text-white text-xs rounded-[7px] ${
-                        confirmModal.variant === 'rose'
+                      className={`h-8.5 px-4 py-1 font-bold text-white text-xs rounded-[7px] ${confirmModal.variant === 'rose'
                           ? 'bg-rose-600 hover:bg-rose-700'
                           : 'bg-blue-600 hover:bg-blue-700'
-                      }`}
+                        }`}
                     >
                       Yes, Proceed
                     </Button>
@@ -1635,7 +1665,7 @@ export default function StandaloneSetup() {
 
             {/* Top bar */}
             <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 py-4 sm:px-6 md:px-10 md:py-6">
-              <div 
+              <div
                 onClick={resetToHome}
                 className="flex min-w-0 items-center gap-2.5 cursor-pointer hover:opacity-85 transition-opacity"
               >
@@ -1714,31 +1744,29 @@ export default function StandaloneSetup() {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="h-screen bg-[#f8fafc] text-slate-800 flex items-center justify-center p-4 selection:bg-blue-100 antialiased overflow-hidden">
-        
+
         {createPortal(
           <AnimatePresence>
             {alertBanner.isOpen && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -50, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
                 transition={{ duration: 0.25, ease: 'easeOut' }}
-                className="fixed top-6 right-6 z-50 w-full max-w-md px-4"
+                className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
               >
-                <div className={`flex items-start gap-3 p-4 rounded-xl shadow-2xl border backdrop-blur-md ${
-                  alertBanner.variant === 'success' 
-                    ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800' 
-                    : alertBanner.variant === 'destructive' 
-                    ? 'bg-rose-50/95 border-rose-200 text-rose-800' 
-                    : 'bg-blue-50/95 border-blue-200 text-blue-800'
-                }`}>
-                  <AlertCircle className={`w-5 h-5 mt-0.5 shrink-0 ${
-                    alertBanner.variant === 'success' 
-                      ? 'text-emerald-500' 
-                      : alertBanner.variant === 'destructive' 
-                      ? 'text-rose-500' 
-                      : 'text-blue-500'
-                  }`} />
+                <div className={`flex items-start gap-3 p-4 rounded-xl shadow-2xl border backdrop-blur-md ${alertBanner.variant === 'success'
+                    ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800'
+                    : alertBanner.variant === 'destructive'
+                      ? 'bg-rose-50/95 border-rose-200 text-rose-800'
+                      : 'bg-blue-50/95 border-blue-200 text-blue-800'
+                  }`}>
+                  <AlertCircle className={`w-5 h-5 mt-0.5 shrink-0 ${alertBanner.variant === 'success'
+                      ? 'text-emerald-500'
+                      : alertBanner.variant === 'destructive'
+                        ? 'text-rose-500'
+                        : 'text-blue-500'
+                    }`} />
                   <div>
                     <h4 className="font-bold text-sm leading-snug">{alertBanner.title}</h4>
                     <p className="text-xs mt-0.5 leading-normal opacity-90">{alertBanner.description}</p>
@@ -1753,7 +1781,7 @@ export default function StandaloneSetup() {
         {/* CUSTOM CONFIRMATION MODAL OVERLAY */}
         <AnimatePresence>
           {confirmModal.isOpen && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1766,11 +1794,10 @@ export default function StandaloneSetup() {
                 className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 p-6 shadow-2xl space-y-4"
               >
                 <div className="flex gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
-                    confirmModal.variant === 'rose'
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${confirmModal.variant === 'rose'
                       ? 'bg-rose-50 border-rose-100 text-rose-500'
                       : 'bg-blue-50 border-blue-100 text-blue-500'
-                  }`}>
+                    }`}>
                     <ShieldAlert className="w-5 h-5" />
                   </div>
                   <div>
@@ -1780,23 +1807,22 @@ export default function StandaloneSetup() {
                 </div>
 
                 <div className="flex justify-end gap-2.5 pt-1">
-                  <Button 
-                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} 
+                  <Button
+                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
                     variant="outline"
                     size="sm"
                     className="h-8.5 px-4 font-bold border-slate-200 text-slate-600 hover:bg-slate-50 text-xs rounded-[7px]"
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={confirmModal.onConfirm}
                     variant={confirmModal.variant === 'rose' ? 'destructive' : 'default'}
                     size="sm"
-                    className={`h-8.5 px-4 py-1 font-bold text-white text-xs rounded-[7px] ${
-                      confirmModal.variant === 'rose'
+                    className={`h-8.5 px-4 py-1 font-bold text-white text-xs rounded-[7px] ${confirmModal.variant === 'rose'
                         ? 'bg-rose-600 hover:bg-rose-700'
                         : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
+                      }`}
                   >
                     Yes, Proceed
                   </Button>
@@ -1806,12 +1832,12 @@ export default function StandaloneSetup() {
           )}
         </AnimatePresence>
 
-        {/* BIOMETRIC SPECIMEN PREVIEW MODAL */}
+        {/* BIOMETRIC PREVIEW MODAL */}
         <AnimatePresence>
           {viewingBiometric && (() => {
             const name = viewingBiometric.name;
             const type = viewingBiometric.type;
-            
+
             const isDataLoading = !viewingBiometricsData;
             const biometrics = viewingBiometricsData || {};
 
@@ -1824,32 +1850,32 @@ export default function StandaloneSetup() {
             };
 
             if (isDataLoading) {
-              title = 'Loading Specimen';
+              title = 'Loading Profile';
               content = (
                 <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
                   <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-xs text-slate-500 font-medium">Fetching specimen data...</p>
+                  <p className="text-xs text-slate-500 font-medium">Fetching biometric data...</p>
                 </div>
               );
             } else {
               if (type === 'photo') {
-                title = 'Portrait Specimen';
+                title = 'Portrait Photo';
                 content = biometrics.photo ? (
                   <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-100 animate-in fade-in duration-200">
                     <img src={formatSrc(biometrics.photo)} alt="Portrait" className="max-w-full max-h-[280px] rounded-xl shadow-md border object-cover" />
-                    <span className="text-[10px] text-slate-400 mt-2 font-mono">Portrait photo specimen</span>
+                    <span className="text-[10px] text-slate-400 mt-2 font-mono">Portrait photo template</span>
                   </div>
                 ) : null;
               } else if (type === 'signature') {
-                title = 'Signature Specimen';
+                title = 'Signature Photo';
                 content = biometrics.signature ? (
                   <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-100 animate-in fade-in duration-200">
                     <img src={formatSrc(biometrics.signature)} alt="Signature" className="max-w-full max-h-[160px] object-contain" />
-                    <span className="text-[10px] text-slate-400 mt-2 font-mono">Signature specimen</span>
+                    <span className="text-[10px] text-slate-400 mt-2 font-mono">Signature photo template</span>
                   </div>
                 ) : null;
               } else if (type === 'id') {
-                title = 'ID Document Specimen';
+                title = 'ID Document Photos';
                 content = (biometrics.idFront || biometrics.idBack) ? (
                   <div className="space-y-4 animate-in fade-in duration-200">
                     {biometrics.idFront && (
@@ -1867,7 +1893,7 @@ export default function StandaloneSetup() {
                   </div>
                 ) : null;
               } else if (type === 'fingerprint') {
-                title = 'Fingerprint Specimen';
+                title = 'Fingerprint Scan';
                 content = (biometrics.thumbprint1 || biometrics.thumbprint2) ? (
                   <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-200">
                     {biometrics.thumbprint1 && (
@@ -1924,7 +1950,7 @@ export default function StandaloneSetup() {
                         <div>
                           <p className="text-xs font-bold text-slate-800">No Biometric Captured</p>
                           <p className="text-[10px] text-slate-500 mt-0.5 max-w-[240px]">
-                            Biometric data for this specimen has not been captured for this signatory yet.
+                            Biometric data for this relation has not been captured for this signatory yet.
                           </p>
                         </div>
                       </div>
@@ -2006,9 +2032,9 @@ export default function StandaloneSetup() {
                                   <Tooltip key={item.type}>
                                     <TooltipTrigger asChild>
                                       <div>
-                                        <BiometricIndicator 
-                                          isCaptured={item.isCaptured} 
-                                          icon={item.icon} 
+                                        <BiometricIndicator
+                                          isCaptured={item.isCaptured}
+                                          icon={item.icon}
                                           onClick={() => {
                                             if (item.isCaptured) {
                                               setViewingBiometric({
@@ -2031,6 +2057,16 @@ export default function StandaloneSetup() {
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                            <Button
+                              onClick={() => {
+                                handleLaunchEnquiryRelation(rel.relationNo);
+                              }}
+                              variant="outline"
+                              className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 text-xs h-8 px-3 rounded-[7px] font-bold flex items-center gap-1"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> 
+                              {/* View Profile */}
+                            </Button>
                             <Button
                               onClick={() => {
                                 handleLaunchUpdate(rel);
@@ -2079,18 +2115,17 @@ export default function StandaloneSetup() {
         </AnimatePresence>
 
         {/* WIZARD CONTAINER CARD */}
-        <div className={`w-full bg-white rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden h-[90vh] ${
-          (currentStep === 1 && landingView === 'home')
-            ? 'flex flex-col' 
+        <div className={`w-full bg-white rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden h-[90vh] ${(currentStep === 1 && landingView === 'home')
+            ? 'flex flex-col'
             : 'grid grid-cols-1 lg:grid-cols-[360px,1fr]'
-        }`}>
-          
+          }`}>
+
           {/* LEFT WIZARD SIDEBAR (Fading Dot Pattern & Stepper Icons) */}
           {!(currentStep === 1 && landingView === 'home') && (
             <div className="bg-[#1e293b] text-white p-6 flex flex-col justify-between relative overflow-hidden shrink-0">
               {/* Grid Pattern Background overlay (Fading from top to bottom) */}
-              <div 
-                className="absolute inset-0 opacity-10 pointer-events-none" 
+              <div
+                className="absolute inset-0 opacity-10 pointer-events-none"
                 style={{
                   backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)',
                   backgroundSize: '16px 16px',
@@ -2098,10 +2133,10 @@ export default function StandaloneSetup() {
                   WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%)'
                 }}
               ></div>
-              
+
               {/* Header / Logo */}
               <div className="relative z-10">
-                <div 
+                <div
                   onClick={resetToHome}
                   className="flex items-center gap-2.5 mb-11 cursor-pointer hover:opacity-85 transition-opacity"
                 >
@@ -2113,7 +2148,7 @@ export default function StandaloneSetup() {
                     <span className="text-blue-400 font-extrabold text-xl">.</span>
                   </div>
                 </div>
-   
+
                 {/* Stepper Progress (With custom Lucide icons) */}
                 <div className="space-y-4">
                   {steps.map((step, idx) => {
@@ -2123,30 +2158,26 @@ export default function StandaloneSetup() {
                     return (
                       <div key={step.number} className="flex items-start gap-4 group">
                         <div className="flex flex-col items-center">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center border font-bold text-sm transition-all duration-300 ${
-                            isCompleted 
-                              ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/25' 
-                              : isActive 
-                              ? 'bg-white border-white text-[#1e293b] scale-105 shadow-lg shadow-white/10' 
-                              : 'border-slate-700 text-slate-400 bg-transparent'
-                          }`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center border font-bold text-sm transition-all duration-300 ${isCompleted
+                              ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/25'
+                              : isActive
+                                ? 'bg-white border-white text-[#1e293b] scale-105 shadow-lg shadow-white/10'
+                                : 'border-slate-700 text-slate-400 bg-transparent'
+                            }`}>
                             {isCompleted ? <Check className="w-5 h-5" /> : <StepIcon className="w-4.5 h-4.5" />}
                           </div>
                           {idx < steps.length - 1 && (
-                            <div className={`w-[2px] h-8 my-1 transition-colors duration-300 ${
-                              isCompleted ? 'bg-blue-500' : 'bg-slate-700'
-                            }`} />
+                            <div className={`w-[2px] h-8 my-1 transition-colors duration-300 ${isCompleted ? 'bg-blue-500' : 'bg-slate-700'
+                              }`} />
                           )}
                         </div>
                         <div className="pt-1">
-                          <h4 className={`text-sm font-semibold leading-snug transition-colors ${
-                            isActive ? 'text-white font-extrabold' : isCompleted ? 'text-slate-300' : 'text-slate-500'
-                          }`}>
+                          <h4 className={`text-sm font-semibold leading-snug transition-colors ${isActive ? 'text-white font-extrabold' : isCompleted ? 'text-slate-300' : 'text-slate-500'
+                            }`}>
                             {step.label}
                           </h4>
-                          <p className={`text-xs mt-1 transition-colors ${
-                            isActive ? 'text-blue-300' : 'text-slate-400'
-                          }`}>
+                          <p className={`text-xs mt-1 transition-colors ${isActive ? 'text-blue-300' : 'text-slate-400'
+                            }`}>
                             {step.desc}
                           </p>
                         </div>
@@ -2155,7 +2186,7 @@ export default function StandaloneSetup() {
                   })}
                 </div>
               </div>
-   
+
               {/* Bottom Panel Branding */}
               <div className="relative z-10 mt-4 pt-4 border-t border-slate-800/80">
                 <h5 className="text-xs font-semibold text-slate-400 uppercase tracking-widest leading-none">Biometric Glide Suite</h5>
@@ -2170,11 +2201,11 @@ export default function StandaloneSetup() {
 
           {/* RIGHT WORKSPACE (Elegant Light Theme) */}
           <div className="p-6 md:p-8 flex flex-col bg-white overflow-hidden relative flex-1">
-            
+
             {/* Header controls inside Workspace */}
             {currentStep !== 1 && (
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
-                
+
                 {/* Back Button */}
                 {navStack.length > 1 ? (
                   <button
@@ -2193,9 +2224,8 @@ export default function StandaloneSetup() {
                     onClick={() => setShowConfig(!showConfig)}
                     variant="outline"
                     size="sm"
-                    className={`h-8 px-3 rounded-[7px] border-slate-200 text-slate-500 hover:text-slate-800 flex items-center gap-1.5 text-xs font-bold ${
-                      showConfig ? 'bg-slate-50 text-slate-800' : ''
-                    }`}
+                    className={`h-8 px-3 rounded-[7px] border-slate-200 text-slate-500 hover:text-slate-800 flex items-center gap-1.5 text-xs font-bold ${showConfig ? 'bg-slate-50 text-slate-800' : ''
+                      }`}
                   >
                     <Settings className="w-3.5 h-3.5" />
                   </Button>
@@ -2227,7 +2257,7 @@ export default function StandaloneSetup() {
 
             {/* DYNAMIC STEPS DISPLAY */}
             <div className="flex-1 overflow-y-auto py-4 pr-1">
-              
+
               {/* STEP 1: PORTAL LANDING PAGE */}
               {currentStep === 1 && (
                 <div className="flex-1 flex flex-col justify-center">
@@ -2240,7 +2270,7 @@ export default function StandaloneSetup() {
               {/* STEP 3: MANAGE SIGNATORY RELATIONS */}
               {currentStep === 3 && (
                 <div className="space-y-5">
-                  
+
                   {/* Account Header info */}
                   <div className="p-3.5 rounded-2xl bg-blue-50/50 border border-blue-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
@@ -2250,10 +2280,13 @@ export default function StandaloneSetup() {
                       <h3 className="text-base font-bold text-slate-800 font-mono mt-0.5">#{activeAccNo} {accName ? `- ${accName}` : ''}</h3>
                       <p className="text-[10px] text-slate-500 mt-0.5">Mandate: <strong className="text-slate-700">{accMandate}</strong></p>
                     </div>
-                    
+
                     <div className="flex gap-2">
                       <Button
-                        onClick={() => navigateTo('create')}
+                        onClick={() => {
+                          setEditingAccNo(activeAccNo);
+                          navigateTo('create');
+                        }}
                         variant="outline"
                         size="sm"
                         className="h-8 px-3.5 text-xs font-bold border-slate-200 text-slate-600 hover:bg-slate-50 rounded-[7px]"
@@ -2273,7 +2306,7 @@ export default function StandaloneSetup() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-5 items-stretch">
-                    
+
                     {/* Unified Add/Edit Signatory Form (collapsible, hides table) */}
                     {showAddSignatory && (
                       <form onSubmit={handleSaveRelation} className="max-w-2xl mx-auto w-full p-6 rounded-2xl border-2 border-blue-500/30 bg-white space-y-6 shadow-md shadow-blue-500/5 animate-in fade-in duration-300">
@@ -2418,7 +2451,7 @@ export default function StandaloneSetup() {
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div className="space-y-0.5">
                                   <h5 className="text-xs font-bold text-slate-900">{consoleHeader}</h5>
-                                  <p className="text-[10px] text-slate-500">Launch capture screen to register or update biometric specimens.</p>
+                                  <p className="text-[10px] text-slate-500">Launch capture screen to register or update biometric files.</p>
                                 </div>
 
                                 {relObjForStatus && (() => {
@@ -2517,7 +2550,7 @@ export default function StandaloneSetup() {
                                 const lastInitial = rel.surname ? rel.surname.charAt(0).toUpperCase() : '';
                                 const initials = `${firstInitial}${lastInitial}` || '??';
                                 const colorClass = getInitialsColor(name);
-                                
+
                                 return (
                                   <tr key={rel.relationNo} className="hover:bg-slate-50/50 bg-white transition-colors duration-200">
                                     <td className="py-3 px-4">
@@ -2552,9 +2585,9 @@ export default function StandaloneSetup() {
                                           <Tooltip key={item.type}>
                                             <TooltipTrigger asChild>
                                               <div>
-                                                <BiometricIndicator 
-                                                  isCaptured={item.isCaptured} 
-                                                  icon={item.icon} 
+                                                <BiometricIndicator
+                                                  isCaptured={item.isCaptured}
+                                                  icon={item.icon}
                                                   onClick={() => setViewingBiometric({
                                                     relationNo: rel.relationNo,
                                                     type: item.type,
@@ -2584,7 +2617,7 @@ export default function StandaloneSetup() {
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent className="bg-slate-800 text-white text-xs px-2 py-1 rounded-[7px]">
-                                            View Signatory Profile Specimen
+                                            View Signatory Profile Details
                                           </TooltipContent>
                                         </Tooltip>
 
@@ -2669,12 +2702,12 @@ export default function StandaloneSetup() {
   );
 }
 
-function BiometricIndicator({ 
-  isCaptured, 
+function BiometricIndicator({
+  isCaptured,
   icon: Icon,
   onClick
-}: { 
-  isCaptured?: boolean; 
+}: {
+  isCaptured?: boolean;
   icon: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
 }) {
@@ -2682,11 +2715,10 @@ function BiometricIndicator({
     <button
       type="button"
       onClick={onClick}
-      className={`w-7 h-7 rounded-[7px] border flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-        isCaptured 
-          ? 'bg-blue-50 text-blue-600 border-blue-200 scale-100 shadow-sm hover:bg-blue-100' 
+      className={`w-7 h-7 rounded-[7px] border flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${isCaptured
+          ? 'bg-blue-50 text-blue-600 border-blue-200 scale-100 shadow-sm hover:bg-blue-100'
           : 'bg-slate-50 text-slate-400 border-slate-100 scale-95 opacity-60 hover:opacity-100 hover:bg-slate-100'
-      }`}
+        }`}
     >
       <Icon className="w-3.5 h-3.5" />
     </button>

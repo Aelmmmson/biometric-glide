@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { handleSystemError } from '@/lib/errorHandler';
 import {
   searchImages,
   approveCustomerImages,
@@ -149,9 +150,10 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
         });
       }
     } catch (error) {
+      const uiError = handleSystemError(error, 'Approval.handleSearch');
       toast({
-        title: "Error",
-        description: "Failed to search images",
+        title: uiError.alert,
+        description: uiError.action,
         variant: "destructive",
       });
     } finally {
@@ -205,10 +207,10 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
         });
       }
     } catch (err) {
-      console.error(err);
+      const uiError = handleSystemError(err, 'Approval.fetchAccountRelations');
       toast({
-        title: "Error",
-        description: "Failed to load account relations.",
+        title: uiError.alert,
+        description: uiError.action,
         variant: "destructive",
       });
     } finally {
@@ -287,7 +289,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
           failCount++;
         }
       } catch (error) {
-        console.error(`Error approving relation #${rel.relation_no}:`, error);
+        handleSystemError(error, `Approval.handleApproveChecked (relation #${rel.relation_no})`);
         failCount++;
       }
     }
@@ -353,7 +355,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
           failCount++;
         }
       } catch (error) {
-        console.error(`Error rejecting relation #${rel.relation_no}:`, error);
+        handleSystemError(error, `Approval.handleRejectChecked (relation #${rel.relation_no})`);
         failCount++;
       }
     }
@@ -424,9 +426,10 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
         });
       }
     } catch (error) {
+      const uiError = handleSystemError(error, 'Approval.handleApprove');
       toast({
-        title: "Error",
-        description: "Failed to approve images",
+        title: uiError.alert,
+        description: uiError.action,
         variant: "destructive",
       });
     }
@@ -474,9 +477,10 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
         });
       }
     } catch (error) {
+      const uiError = handleSystemError(error, 'Approval.handleReject');
       toast({
-        title: "Error",
-        description: "Failed to reject images",
+        title: uiError.alert,
+        description: uiError.action,
         variant: "destructive",
       });
     }
@@ -782,7 +786,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
               <Badge variant="secondary" className="ml-2 text-xs">{limit || 'N/A'}</Badge>
             </div>
             <div className="text-center">
-              <Badge variant="outline" className="text-xs">Mandate</Badge>
+              <Badge variant="outline" className="text-xs">Signature Level</Badge>
               <Badge variant="secondary" className="ml-2 text-xs">{mandate || 'N/A'}</Badge>
             </div>
           </div>
@@ -1007,14 +1011,14 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
                           <Badge className="border-none bg-blue-700 text-white hover:bg-blue-700">#{accountParams?.custNo || ''}</Badge>
                         </div>
                         <h2 className="text-lg font-bold text-white">
-                          {accountRelations[0]?.unapproved?.mandate || accountRelations[0]?.approved?.mandate || 'Mandate'} Account
+                          Account Mandate: {accountRelations[0]?.unapproved?.mandate || accountRelations[0]?.approved?.mandate || 'Mandate'}
                         </h2>
                         <p className="text-xs text-blue-100">
-                          Supervisor Approval Dashboard for Signatory Specimens
+                          Approval Dashboard for Signatories
                         </p>
                       </div>
 
-                      {relationsWithUnapproved.length > 0 ? (
+                      {/* {relationsWithUnapproved.length > 0 ? (
                         <div className="flex shrink-0 items-center gap-4">
                           <div className="flex items-center gap-2 rounded-lg border border-blue-500 bg-white px-3 py-1.5 text-white">
                             <input
@@ -1081,7 +1085,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
                         <div className="shrink-0 rounded-lg border border-blue-500/30 bg-blue-700/50 px-3 py-1.5 text-xs font-bold text-blue-200">
                           No pending unapproved images for this account
                         </div>
-                      )}
+                      )} */}
                     </CardContent>
                   </Card>
                 );

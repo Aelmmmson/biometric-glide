@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { getChequeDetails, getAccountSignatures, verifySignature, verifyChequeMandate, type ChequeDetailResponse, type SignatureVerificationResponse } from '@/services/api';
 import { SandboxVerifyModal } from '@/components/SandboxVerifyModal';
+import { handleSystemError } from '@/lib/errorHandler';
 import { Beaker } from 'lucide-react';
 
 interface ViewChequesProps {
@@ -34,19 +35,25 @@ const ZoomableImage = ({
     className, 
     onImageClick,
     isZoomed: controlledIsZoomed,
-    onZoomChange
+    onZoomChange,
+    coords: controlledCoords,
+    onCoordsChange
 }: { 
     src: string, 
     alt: string, 
     className?: string, 
     onImageClick?: (e: React.MouseEvent) => void,
     isZoomed?: boolean,
-    onZoomChange?: (zoomed: boolean) => void
+    onZoomChange?: (zoomed: boolean) => void,
+    coords?: { x: number, y: number },
+    onCoordsChange?: (coords: { x: number, y: number }) => void
 }) => {
     const [localIsZoomed, setLocalIsZoomed] = useState(false);
     const isZoomed = controlledIsZoomed !== undefined ? controlledIsZoomed : localIsZoomed;
     const setIsZoomed = onZoomChange || setLocalIsZoomed;
-    const [coords, setCoords] = useState({ x: 0, y: 0 });
+    const [localCoords, setLocalCoords] = useState({ x: 0, y: 0 });
+    const coords = controlledCoords !== undefined ? controlledCoords : localCoords;
+    const setCoords = onCoordsChange || setLocalCoords;
     const containerRef = useRef<HTMLDivElement>(null);
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -56,10 +63,11 @@ const ZoomableImage = ({
         const y = e.clientY - rect.top;
         const xPercent = (x / rect.width) * 100;
         const yPercent = (y / rect.height) * 100;
-        setCoords({
+        const newCoords = {
             x: (50 - xPercent) * 1.5,
             y: (50 - yPercent) * 1.5
-        });
+        };
+        setCoords(newCoords);
     };
 
     const toggleZoom = (e: React.MouseEvent) => {
@@ -84,7 +92,12 @@ const ZoomableImage = ({
         <div 
             ref={containerRef}
             onMouseMove={handleMouseMove}
-            onMouseLeave={() => { setIsZoomed(false); if (onZoomChange) onZoomChange(false); }}
+            onMouseLeave={() => { 
+                if (controlledIsZoomed === undefined) {
+                    setIsZoomed(false); 
+                    setCoords({ x: 0, y: 0 }); 
+                } 
+            }}
             className="relative overflow-hidden w-full h-full flex items-center justify-center select-none"
             style={{ cursor: isZoomed ? 'zoom-out' : (onImageClick ? 'pointer' : 'zoom-in') }}
             onClick={handleContainerClick}
@@ -106,13 +119,21 @@ const SignatoryCard = ({
     index, 
     chequeAmountValue, 
     showRelation,
-    onZoom 
+    onZoom,
+    isActive,
+    onClick,
+    syncedZoom,
+    syncedCoords
 }: { 
     sig: SignatureItem, 
     index: number, 
     chequeAmountValue: number,
     showRelation: boolean,
-    onZoom: (src: string) => void 
+    onZoom: (src: string) => void,
+    isActive?: boolean,
+    onClick?: () => void,
+    syncedZoom?: boolean,
+    syncedCoords?: { x: number, y: number }
 }) => {
     const [isFlipped, setIsFlipped] = useState(false);
     const [isZoomedFront, setIsZoomedFront] = useState(false);
@@ -127,13 +148,33 @@ const SignatoryCard = ({
         setIsZoomedBack(false);
     };
 
+    // Auto-flip back to signature if parent zoom is active
+    useEffect(() => {
+        if (syncedZoom && isActive) {
+            setIsFlipped(false);
+        }
+    }, [syncedZoom, isActive]);
+
     return (
         <TooltipProvider delayDuration={200}>
-        <div className="bg-white border border-border rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md page-break-inside-avoid relative">
+        <div 
+            onClick={onClick}
+            className={`bg-white border rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md page-break-inside-avoid relative cursor-pointer ${
+                isActive 
+                    ? 'border-primary ring-2 ring-primary/20 shadow-md scale-[1.01]' 
+                    : 'border-border'
+            }`}
+        >
             {/* Header row with title, badges, and image controls */}
             <div className="flex justify-between items-center px-3 py-2 border-b border-border/60">
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-primary whitespace-nowrap">Signatory {index + 1}</span>
+                    {isActive && (
+                        <span className="text-[9px] font-black uppercase tracking-wider text-white bg-primary px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
+                            <Shield className="w-2.5 h-2.5 text-white" />
+                            Active
+                        </span>
+                    )}
                     {isLimitExceeded && (
                         <span className="text-[9px] font-black uppercase tracking-wider text-red-600 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0">
                             <AlertTriangle className="w-3 h-3 text-red-600 animate-pulse" />
@@ -188,15 +229,29 @@ const SignatoryCard = ({
             <div className="grid grid-cols-3 gap-2 px-3 py-1.5 text-slate-700 border-b border-border/40">
                 <div className="flex flex-col">
                     <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 mb-0.5">Sign Category</span>
-                    <span className="text-xs font-bold text-slate-900 truncate">{sig.sign_category || 'N/A'}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className={`text-xs font-bold truncate ${isLimitExceeded ? 'text-red-600 font-bold' : 'text-slate-900'}`}>{sig.sign_category || 'N/A'}</span>
+                        {isLimitExceeded ? (
+                            <AlertTriangle className="w-3.5 h-3.5 text-red-600 animate-pulse shrink-0" />
+                        ) : (
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )}
+                    </div>
                 </div>
                 <div className="flex flex-col">
                     <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 mb-0.5">Limit</span>
-                    <span className="text-xs font-bold text-slate-900 truncate">
-                        {sig.limit !== undefined && sig.limit > 0 
-                            ? `SLE ${new Intl.NumberFormat('en-US').format(sig.limit)}` 
-                            : 'No Limit'}
-                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className={`text-xs font-bold truncate ${isLimitExceeded ? 'text-red-600 font-bold' : 'text-slate-900'}`}>
+                            {sig.limit !== undefined && sig.limit > 0 
+                                ? `SLE ${new Intl.NumberFormat('en-US').format(sig.limit)}` 
+                                : 'No Limit'}
+                        </span>
+                        {isLimitExceeded ? (
+                            <AlertCircle className="w-3.5 h-3.5 text-red-600 animate-pulse shrink-0" />
+                        ) : (
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )}
+                    </div>
                 </div>
                 {showRelation && sig.relation_no && (
                     <div className="flex flex-col">
@@ -209,7 +264,7 @@ const SignatoryCard = ({
             {/* SCREEN VIEW: 3D Flipping specimen card — edge-to-edge images */}
             <div className="print:hidden w-full h-[220px] perspective-1000">
                 <div 
-                    onClick={handleFlip}
+                    onClick={(e) => { e.stopPropagation(); handleFlip(); }}
                     className={`w-full h-full relative transform-style-3d transition-transform duration-500 cursor-pointer ${isFlipped ? 'rotate-y-180' : ''}`}
                 >
                     {/* Front: Signature */}
@@ -220,8 +275,9 @@ const SignatoryCard = ({
                                 alt={`Signature ${index + 1}`} 
                                 className="object-contain contrast-125 grayscale"
                                 onImageClick={handleFlip}
-                                isZoomed={isZoomedFront}
-                                onZoomChange={setIsZoomedFront}
+                                isZoomed={isActive ? (syncedZoom || isZoomedFront) : isZoomedFront}
+                                onZoomChange={isActive && syncedZoom ? undefined : setIsZoomedFront}
+                                coords={isActive && syncedZoom ? syncedCoords : undefined}
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground/45 italic bg-slate-50">
@@ -309,6 +365,22 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
   const [roiZones, setRoiZones] = useState<Array<{id: string, x: number, y: number, w: number, h: number}>>([]);
   const [isCalibrating, setIsCalibrating] = useState(true); // Default to true to show automated nudge area
 
+  // Synced Zoom & Lens States
+  const [isChequeZoomed, setIsChequeZoomed] = useState(false);
+  const [chequeCoords, setChequeCoords] = useState({ x: 0, y: 0 });
+  const [isLensModeActive, setIsLensModeActive] = useState(false);
+  const [lensData, setLensData] = useState<{
+    isHovering: boolean;
+    xPercent: number;
+    yPercent: number;
+    clientX: number;
+    clientY: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
   // Clock Update
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -336,9 +408,9 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
         setValidationMessage(response.output_msg || 'Validation returned failure status.');
       }
     } catch (err) {
-      console.error('[Validation API] Failed:', err);
+      const uiError = handleSystemError(err, 'ViewCheques.handleMandateValidation');
       setValidationStatus('error');
-      setValidationMessage(err instanceof Error ? err.message : 'API network connection failure.');
+      setValidationMessage(`${uiError.alert} ${uiError.action}`);
     }
   };
 
@@ -402,7 +474,7 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
                setRoiZones([{ id: 'zone_1', x: 60, y: 55, w: 25, h: 25 }]);
             }
         } catch (fetchErr) {
-            console.error("[Protocol] Failed to fetch signatures:", fetchErr);
+            handleSystemError(fetchErr, 'ViewCheques.fetchChequeData.getSignatures');
         } finally {
             setIsLoadingSignatures(false);
         }
@@ -411,7 +483,8 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
         setIsLoadingSignatures(false);
       }
     } catch (err) {
-      setError('Communication with the verification hub lost');
+      const uiError = handleSystemError(err, 'ViewCheques.fetchChequeData');
+      setError(`${uiError.alert} ${uiError.action}`);
       setIsLoadingSignatures(false);
     } finally {
       setLoading(false);
@@ -449,7 +522,7 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
         
         setVerificationMatrix(newResults);
     } catch (err) {
-        console.error("Matrix Verification failed", err);
+        handleSystemError(err, 'ViewCheques.handleAiVerify');
     } finally {
         setIsVerifying(false);
     }
@@ -736,6 +809,21 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
                         onAddZone={addRoiZone}
                         onClear={clearAuditHistory}
                         onZoom={setZoomImageSrc}
+                        isZoomed={isChequeZoomed}
+                        onZoomChange={setIsChequeZoomed}
+                        coords={chequeCoords}
+                        onCoordsChange={setChequeCoords}
+                        isLensModeActive={isLensModeActive}
+                        onLensToggle={() => {
+                            setIsLensModeActive(!isLensModeActive);
+                            if (!isLensModeActive) {
+                                // Turn off standard zoom when lens activates
+                                setIsChequeZoomed(false);
+                                setChequeCoords({ x: 0, y: 0 });
+                            }
+                        }}
+                        lensData={lensData}
+                        onLensDataChange={setLensData}
                     />
                     <ScanProofCard 
                         label="Cheque Face: Back Component" 
@@ -785,6 +873,10 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
                                     chequeAmountValue={chequeAmountValue} 
                                     showRelation={signatures.length > 1 || accountMandate.toUpperCase() !== 'SOLE SIGNATORY'}
                                     onZoom={setZoomImageSrc}
+                                    isActive={index === currentSigIndex}
+                                    onClick={() => setCurrentSigIndex(index)}
+                                    syncedZoom={isChequeZoomed}
+                                    syncedCoords={chequeCoords}
                                 />
                             ))
                         ) : (
@@ -1020,6 +1112,66 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
           }
         `}} />
 
+        {/* FLOATING GLASSMORPHIC LENS SIDE-BY-SIDE COMPARISON */}
+        {isLensModeActive && lensData && lensData.isHovering && (
+          <div 
+            className="fixed pointer-events-none z-[9999] backdrop-blur-md bg-white/95 border border-slate-200/80 shadow-2xl rounded-2xl p-3 flex flex-row gap-3 transition-opacity duration-150"
+            style={{
+              left: `${lensData.clientX + 380 > window.innerWidth ? lensData.clientX - 380 : lensData.clientX + 20}px`,
+              top: `${lensData.clientY + 220 > window.innerHeight ? lensData.clientY - 220 : lensData.clientY + 20}px`,
+              width: '360px',
+              height: '200px'
+            }}
+          >
+            {/* Left Column: Cheque magnified Lens */}
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-bold uppercase text-primary tracking-wider mb-1">Cheque (Lens)</span>
+              <div className="flex-1 bg-white border border-slate-200 rounded-lg overflow-hidden relative flex items-center justify-center">
+                <img 
+                  src={chequeData.frontImage} 
+                  alt="Cheque Magnified" 
+                  style={{
+                    position: 'absolute',
+                    width: `${lensData.width * 3}px`,
+                    height: `${lensData.height * 3}px`,
+                    left: `${-lensData.x * 3 + 160 / 2}px`,
+                    top: `${-lensData.y * 3 + 160 / 2}px`,
+                    transform: 'none',
+                    filter: 'url(#sharpen-filter) contrast(1.8) grayscale(100%) brightness(1.05)',
+                    maxWidth: 'none',
+                    maxHeight: 'none',
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Right Column: Current Mandate specimen */}
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-bold uppercase text-primary tracking-wider mb-1">Mandate Specimen</span>
+              <div className="flex-1 bg-white border border-slate-200 rounded-lg overflow-hidden relative flex items-center justify-center p-1">
+                {signatures[currentSigIndex]?.signature ? (
+                  <img 
+                    src={signatures[currentSigIndex].signature} 
+                    alt="Mandate Signature Specimen" 
+                    className="w-full h-full object-contain filter contrast-125 grayscale"
+                  />
+                ) : (
+                  <div className="text-[10px] text-muted-foreground/50 italic text-center px-2">No active specimen</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MATH SHARPENING SVG FILTER DEFINITION */}
+        <svg style={{ position: 'absolute', width: 0, height: 0, pointerEvents: 'none' }}>
+          <defs>
+            <filter id="sharpen-filter">
+              <feConvolveMatrix order="3" kernelMatrix="0 -1 0 -1 5 -1 0 -1 0" />
+            </filter>
+          </defs>
+        </svg>
+
         {/* ZOOM FULLSCREEN OVERLAY MODAL */}
         <AnimatePresence>
           {zoomImageSrc && (
@@ -1185,7 +1337,15 @@ const ScanProofCard = ({
     onToggleCalibration,
     onAddZone,
     onClear,
-    onZoom
+    onZoom,
+    isZoomed: controlledIsZoomed,
+    onZoomChange,
+    coords,
+    onCoordsChange,
+    isLensModeActive,
+    onLensToggle,
+    lensData,
+    onLensDataChange
 }: { 
     label: string, 
     src?: string,
@@ -1195,13 +1355,64 @@ const ScanProofCard = ({
     onToggleCalibration: () => void,
     onAddZone: () => void,
     onClear: () => void,
-    onZoom?: (src: string) => void
+    onZoom?: (src: string) => void,
+    isZoomed?: boolean,
+    onZoomChange?: (zoomed: boolean) => void,
+    coords?: { x: number, y: number },
+    onCoordsChange?: (coords: { x: number, y: number }) => void,
+    isLensModeActive?: boolean,
+    onLensToggle?: () => void,
+    lensData?: any,
+    onLensDataChange?: (data: any) => void
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [isZoomed, setIsZoomed] = useState(false);
+    const [localIsZoomed, setLocalIsZoomed] = useState(false);
+    const isZoomed = controlledIsZoomed !== undefined ? controlledIsZoomed : localIsZoomed;
+    const setIsZoomed = onZoomChange || setLocalIsZoomed;
 
-    const updateZone = (id: string, updates: Partial<{x: number, y: number, w: number, h: number}>) => {
-        onZonesChange(zones.map(z => z.id === id ? { ...z, ...updates } : z));
+    const [localCoords, setLocalCoords] = useState({ x: 0, y: 0 });
+    const activeCoords = coords !== undefined ? coords : localCoords;
+    const setActiveCoords = onCoordsChange || setLocalCoords;
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isLensModeActive) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const xPercent = (x / rect.width) * 100;
+        const yPercent = (y / rect.height) * 100;
+        
+        onLensDataChange?.({
+            isHovering: true,
+            xPercent,
+            yPercent,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            x,
+            y,
+            width: rect.width,
+            height: rect.height
+        });
+    };
+
+    const handleMouseEnter = () => {
+        if (!isLensModeActive) return;
+        onLensDataChange?.(prev => prev ? { ...prev, isHovering: true } : {
+            isHovering: true,
+            xPercent: 0,
+            yPercent: 0,
+            clientX: 0,
+            clientY: 0,
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0
+        });
+    };
+
+    const handleMouseLeave = () => {
+        if (!isLensModeActive) return;
+        onLensDataChange?.(null);
     };
 
     return (
@@ -1213,14 +1424,37 @@ const ScanProofCard = ({
                 <div className="flex items-center gap-1">
                     {src && (
                         <>
+                            {onLensToggle && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); onLensToggle(); }}
+                                            className={`h-6 w-6 rounded-full flex items-center justify-center transition-all ${
+                                                isLensModeActive 
+                                                    ? 'bg-primary text-white hover:bg-primary/95 shadow-sm ring-2 ring-primary/20' 
+                                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                                            }`}
+                                        >
+                                            <Eye className="w-3 h-3" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="text-[10px] font-bold">
+                                        {isLensModeActive ? 'Disable Comparison Lens' : 'Enable Comparison Lens'}
+                                    </TooltipContent>
+                                </Tooltip>
+                            )}
+
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); setIsZoomed(!isZoomed); }}
+                                        disabled={isLensModeActive}
                                         className={`h-6 w-6 rounded-full flex items-center justify-center transition-all ${
-                                            isZoomed 
-                                                ? 'bg-primary text-white hover:bg-primary/95 shadow-sm' 
-                                                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                                            isLensModeActive
+                                                ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400'
+                                                : isZoomed 
+                                                    ? 'bg-primary text-white hover:bg-primary/95 shadow-sm' 
+                                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                                         }`}
                                     >
                                         <ZoomIn className="w-3 h-3" />
@@ -1254,6 +1488,9 @@ const ScanProofCard = ({
             <div 
                 ref={containerRef}
                 className="overflow-hidden relative select-none h-[250px] bg-white"
+                onMouseMove={handleMouseMove}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
             >
                 {src ? (
                     <ZoomableImage 
@@ -1262,12 +1499,29 @@ const ScanProofCard = ({
                         className="w-full h-full object-contain"
                         isZoomed={isZoomed}
                         onZoomChange={setIsZoomed}
+                        coords={activeCoords}
+                        onCoordsChange={setActiveCoords}
                     />
                 ) : (
                     <div className="flex flex-col items-center justify-center py-8 gap-1 text-muted-foreground/30 h-full">
                         <ImageIcon className="w-6 h-6 opacity-10" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Signal Locked</span>
                     </div>
+                )}
+
+                {/* Reticle for the lens */}
+                {isLensModeActive && lensData && lensData.isHovering && (
+                    <div 
+                        className="absolute pointer-events-none rounded-full border-2 border-primary bg-primary/10 shadow-lg"
+                        style={{
+                            width: '40px',
+                            height: '40px',
+                            left: `${lensData.x}px`,
+                            top: `${lensData.y}px`,
+                            transform: 'translate(-50%, -50%)',
+                            zIndex: 10
+                        }}
+                    />
                 )}
             </div>
         </div>

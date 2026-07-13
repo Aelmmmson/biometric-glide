@@ -7,6 +7,7 @@ import { Review } from './Review';
 import { useBiometric } from '@/hooks/useBiometric';
 import { fetchActivityConfig } from '@/services/api';
 import { useEffect, useMemo } from 'react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const Index = () => {
   const { state, dispatch, setActivityConfig, setActivityConfigLoaded } = useBiometric();
@@ -62,8 +63,8 @@ const Index = () => {
     const hasFingerprint = !!(state.data.thumbprint1 || state.data.thumbprint2);
 
     if (hasPhotoSignature) c.push(1);
-    if (hasIdentification && state.activityConfig?.identification.status) c.push(2);
-    if (hasFingerprint && state.activityConfig?.fingerprint.status) c.push(3);
+    if (hasIdentification && state.activityConfig?.identification?.status) c.push(2);
+    if (hasFingerprint && state.activityConfig?.fingerprint?.status) c.push(3);
     if (state.isCompleted) c.push(4);
     return c;
   }, [state.data, state.activityConfig, state.isCompleted]);
@@ -104,21 +105,23 @@ const Index = () => {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {state.currentStep === 1 && (
-                  <PhotoSignature onNext={goToNextStep} />
-                )}
-                {state.currentStep === 2 && state.activityConfig?.identification.status && (
-                  <Identification onNext={goToNextStep} />
-                )}
-                {state.currentStep === 3 && state.activityConfig?.fingerprint.status && (
-                  <Fingerprint onNext={goToNextStep} />
-                )}
-                {state.currentStep === 4 && (
-                  <Review />
-                )}
-                {state.currentStep > 4 || (state.currentStep > 1 && !state.activityConfig) ? (
-                  <div className="text-center py-10">Loading step...</div>
-                ) : null}
+                <ErrorBoundary>
+                  {state.currentStep === 1 && (
+                    <PhotoSignature onNext={goToNextStep} />
+                  )}
+                  {state.currentStep === 2 && state.activityConfig?.identification?.status && (
+                    <Identification onNext={goToNextStep} />
+                  )}
+                  {state.currentStep === 3 && state.activityConfig?.fingerprint?.status && (
+                    <Fingerprint onNext={goToNextStep} />
+                  )}
+                  {state.currentStep === 4 && (
+                    <Review />
+                  )}
+                  {state.currentStep > 4 || (state.currentStep > 1 && !state.activityConfig) ? (
+                    <div className="text-center py-10">Loading step...</div>
+                  ) : null}
+                </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
           </div>

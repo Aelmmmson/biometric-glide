@@ -19,6 +19,7 @@ import {
   getRelationNumber,
 } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
+import { handleSystemError } from '@/lib/errorHandler';
 
 interface FingerprintProps {
   mode?: 'capture' | 'update';
@@ -89,13 +90,12 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
         throw new Error(captureResult.response_msg || 'Failed to capture right thumb');
       }
     } catch (error) {
-      console.error('Primary finger capture error:', error);
+      const uiError = handleSystemError(error, 'Fingerprint.handleStartScanThumb1');
       setIsScanningThumb1(false);
       setScanProgressThumb1(0);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
-        title: 'Primary Finger capture failed',
-        description: errorMessage,
+        title: uiError.alert,
+        description: uiError.action,
         variant: 'destructive',
       });
     }
@@ -131,13 +131,12 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
         throw new Error(captureResult.response_msg || 'Failed to capture secondary fingerprint');
       }
     } catch (error) {
-      console.error('Secondary fingerprint capture error:', error);
+      const uiError = handleSystemError(error, 'Fingerprint.handleStartScanThumb2');
       setIsScanningThumb2(false);
       setScanProgressThumb2(0);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
-        title: 'Secondary fingerprint capture failed',
-        description: errorMessage,
+        title: uiError.alert,
+        description: uiError.action,
         variant: 'destructive',
       });
     }
@@ -536,7 +535,7 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
 
               {canContinue && (
                 <Button onClick={handleContinue} className="rounded-full px-8 py-3 gradient-primary shadow-button">
-                  Continue to Review
+                  Next
                 </Button>
               )}
 
