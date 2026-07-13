@@ -32,7 +32,8 @@ import {
   AlertCircle,
   ArrowUp,
   User,
-  IdCard
+  IdCard,
+  Loader2
 } from 'lucide-react';
 
 interface ApprovalParams extends ReturnType<typeof getApprovalParams> {
@@ -1191,6 +1192,13 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
             <ArrowUp className="h-6 w-6" />
           </Button>
         </motion.div>
+      )}
+
+      {isLoading && (
+        <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+          <p className="text-sm font-semibold text-slate-600 mt-4">Processing request...</p>
+        </div>
       )}
     </div>
   );

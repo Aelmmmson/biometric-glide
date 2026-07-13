@@ -617,7 +617,7 @@ export const saveData = async (data: {
     formData.append("effectivedate", "");
     formData.append("sigcat", data.mandate || "");
     formData.append("comment1", data.comment || "");
-    formData.append("type", data.action === 'AMEND' ? "update" : "capture");
+    formData.append("type", data.action === 'AMEND' ? "capture" : "update");
     formData.append("limit", data.limit || "");
     formData.append("pix", photoBase64);
     formData.append("photochange", "");

@@ -73,11 +73,71 @@ export function Review() {
 
         {/* Final Actions */}
         <div className="text-center space-y-8">
-          <div className="bg-gray-50 rounded-2xl p-8 max-w-2xl mx-auto border border-gray-200">
-            <p className="text-lg font-medium text-foreground mb-4">
+          <div className="bg-gray-50 rounded-2xl p-8 max-w-3xl mx-auto border border-gray-200 text-center">
+            <p className="text-lg font-bold text-foreground mb-1">
               Your session is complete.
             </p>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-6">
+              The following biometric and verification data was submitted:
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-4 mb-6">
+              {state?.data?.photo && (
+                <div className="bg-white rounded-xl border border-slate-200/60 p-3 shadow-sm flex flex-col items-center w-full max-w-[160px] shrink-0">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide mb-2 block text-center">Portrait Photo</span>
+                  <div className="h-24 w-full rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-100 p-1">
+                    <img src={state.data.photo} alt="Portrait" className="max-h-full max-w-full object-contain rounded" />
+                  </div>
+                </div>
+              )}
+
+              {state?.data?.signature && (
+                <div className="bg-white rounded-xl border border-slate-200/60 p-3 shadow-sm flex flex-col items-center w-full max-w-[160px] shrink-0">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide mb-2 block text-center">Signature</span>
+                  <div className="h-24 w-full rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-100 p-1">
+                    <img src={state.data.signature} alt="Signature" className="max-h-full max-w-full object-contain rounded" />
+                  </div>
+                </div>
+              )}
+
+              {state?.data?.idFront && (
+                <div className="bg-white rounded-xl border border-slate-200/60 p-3 shadow-sm flex flex-col items-center w-full max-w-[160px] shrink-0">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide mb-2 block text-center">ID Front</span>
+                  <div className="h-24 w-full rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-100 p-1">
+                    <img src={state.data.idFront} alt="ID Front" className="max-h-full max-w-full object-contain rounded" />
+                  </div>
+                </div>
+              )}
+
+              {state?.data?.idBack && (
+                <div className="bg-white rounded-xl border border-slate-200/60 p-3 shadow-sm flex flex-col items-center w-full max-w-[160px] shrink-0">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide mb-2 block text-center">ID Back</span>
+                  <div className="h-24 w-full rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-100 p-1">
+                    <img src={state.data.idBack} alt="ID Back" className="max-h-full max-w-full object-contain rounded" />
+                  </div>
+                </div>
+              )}
+
+              {state?.data?.thumbprint1 && (
+                <div className="bg-white rounded-xl border border-slate-200/60 p-3 shadow-sm flex flex-col items-center w-full max-w-[160px] shrink-0">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide mb-2 block text-center">Left Thumb</span>
+                  <div className="h-24 w-full rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-100 p-1">
+                    <img src={state.data.thumbprint1} alt="Left Thumb" className="max-h-full max-w-full object-contain rounded" />
+                  </div>
+                </div>
+              )}
+
+              {state?.data?.thumbprint2 && (
+                <div className="bg-white rounded-xl border border-slate-200/60 p-3 shadow-sm flex flex-col items-center w-full max-w-[160px] shrink-0">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide mb-2 block text-center">Right Thumb</span>
+                  <div className="h-24 w-full rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-100 p-1">
+                    <img src={state.data.thumbprint2} alt="Right Thumb" className="max-h-full max-w-full object-contain rounded" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <p className="text-muted-foreground text-sm">
               You may now safely close this tab or window.
             </p>
           </div>

@@ -64,27 +64,38 @@ export function PhotoSignature({
     return null;
   });
 
-  const hasExistingLimit = (state.params.limit && state.params.limit !== '-' && state.params.limit !== '--') ||
+  const hasExistingLimit = (mode !== 'update' && state.params.limit && state.params.limit !== '-' && state.params.limit !== '--') ||
                            (relationDetails?.amtlimit !== undefined && relationDetails?.amtlimit !== null && relationDetails?.amtlimit !== 0);
 
-  const hasExistingMandate = (state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') ||
+  const hasExistingMandate = (mode !== 'update' && state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') ||
                              (relationDetails?.signatoryLevel && relationDetails?.signatoryLevel !== '-' && relationDetails?.signatoryLevel !== '--');
 
   const showAuthInputs = !hasExistingLimit || !hasExistingMandate;
 
   const [inputMandate, setInputMandate] = useState(() => {
-    if (state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') return state.params.mandate;
+    if (mode !== 'update' && state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') return state.params.mandate;
     if (relationDetails?.signatoryLevel && relationDetails?.signatoryLevel !== '-' && relationDetails?.signatoryLevel !== '--') return relationDetails.signatoryLevel;
     return '';
   });
 
   const [inputLimit, setInputLimit] = useState(() => {
-    if (state.params.limit && state.params.limit !== '-' && state.params.limit !== '--') return state.params.limit;
+    if (mode !== 'update' && state.params.limit && state.params.limit !== '-' && state.params.limit !== '--') return state.params.limit;
     if (relationDetails?.amtlimit !== undefined && relationDetails?.amtlimit !== null && relationDetails?.amtlimit !== 0) return relationDetails.amtlimit.toString();
     return '';
   });
 
   const [isAuthModalSaved, setIsAuthModalSaved] = useState(false);
+  const [isModifying, setIsModifying] = useState(false);
+  const [savedMandate, setSavedMandate] = useState(() => {
+    if (mode !== 'update' && state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') return state.params.mandate;
+    if (relationDetails?.signatoryLevel && relationDetails?.signatoryLevel !== '-' && relationDetails?.signatoryLevel !== '--') return relationDetails.signatoryLevel;
+    return '';
+  });
+  const [savedLimit, setSavedLimit] = useState(() => {
+    if (mode !== 'update' && state.params.limit && state.params.limit !== '-' && state.params.limit !== '--') return state.params.limit;
+    if (relationDetails?.amtlimit !== undefined && relationDetails?.amtlimit !== null && relationDetails?.amtlimit !== 0) return relationDetails.amtlimit.toString();
+    return '';
+  });
 
   const [photoMode, setPhotoMode] = useState<'capture' | 'upload'>('capture');
   const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
@@ -119,9 +130,11 @@ export function PhotoSignature({
     if (relationDetails) {
       if (relationDetails.signatoryLevel && relationDetails.signatoryLevel !== '-' && relationDetails.signatoryLevel !== '--') {
         setInputMandate(relationDetails.signatoryLevel);
+        setSavedMandate(relationDetails.signatoryLevel);
       }
       if (relationDetails.amtlimit !== undefined && relationDetails.amtlimit !== null && relationDetails.amtlimit !== 0) {
         setInputLimit(relationDetails.amtlimit.toString());
+        setSavedLimit(relationDetails.amtlimit.toString());
       }
     }
   }, [relationDetails]);
@@ -488,7 +501,10 @@ export function PhotoSignature({
                     {showAuthInputs && isAuthModalSaved && (
                       <button
                         type="button"
-                        onClick={() => setIsAuthModalSaved(false)}
+                        onClick={() => {
+                          setIsAuthModalSaved(false);
+                          setIsModifying(true);
+                        }}
                         className="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
                       >
                         (Modify)
@@ -1021,23 +1037,46 @@ export function PhotoSignature({
             onCancel={() => setEditingSignature(false)}
           />
         )}
-
-        {/* Signatory Level and Limit Modal Overlay (displayed only if missing from integrated system URL and not saved) */}
         {showAuthInputs && !isAuthModalSaved && (
-          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div 
+            onClick={isModifying ? () => {
+              setInputMandate(savedMandate);
+              setInputLimit(savedLimit);
+              setIsAuthModalSaved(true);
+              setIsModifying(false);
+            } : undefined}
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200"
+          >
             <motion.div
+              onClick={(e) => e.stopPropagation()}
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="w-full max-w-md bg-white border border-slate-100 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-left"
+              className="w-full max-w-md bg-white border border-slate-100 shadow-2xl rounded-3xl p-6 md:p-8 space-y-6 text-left relative"
             >
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Award className="w-5 h-5" />
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">Authorization Settings</h3>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Relation: <span className="font-mono text-slate-600 font-bold">{getRelationNumber()}</span></p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">Signatory Authorization Settings</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Please define signatory level and limit to proceed</p>
-                </div>
+                {isModifying && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMandate(savedMandate);
+                      setInputLimit(savedLimit);
+                      setIsAuthModalSaved(true);
+                      setIsModifying(false);
+                    }}
+                    className="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600 flex items-center justify-center transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -1045,10 +1084,17 @@ export function PhotoSignature({
                   <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Signatory Level (Category) <span className="text-rose-500">*</span></label>
                   <select
                     value={inputMandate}
-                    onChange={(e) => setInputMandate(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setInputMandate(val);
+                      if (val === 'N/A') {
+                        setInputLimit('0');
+                      }
+                    }}
                     className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
                   >
                     <option value="">Select Category</option>
+                    <option value="N/A">N/A</option>
                     <option value="Category A">Category A</option>
                     <option value="Category B">Category B</option>
                     <option value="Category C">Category C</option>
@@ -1071,8 +1117,13 @@ export function PhotoSignature({
               <div className="pt-2">
                 <Button
                   disabled={!inputMandate || !inputLimit || parseFloat(inputLimit) < 0}
-                  onClick={() => setIsAuthModalSaved(true)}
-                  className="w-full h-11 rounded-xl gradient-primary text-xs font-bold shadow-button transition-all"
+                  onClick={() => {
+                    setSavedMandate(inputMandate);
+                    setSavedLimit(inputLimit);
+                    setIsAuthModalSaved(true);
+                    setIsModifying(false);
+                  }}
+                  className="w-full h-11 rounded-xl gradient-primary text-xs font-bold shadow-button transition-all text-white"
                 >
                   Save & Continue
                 </Button>
