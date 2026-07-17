@@ -40,6 +40,14 @@ interface ExtendedWindow extends Window {
   sigWebInitialized?: boolean;
 }
 
+const normalizeMandate = (val?: string | null): string => {
+  if (!val || val === '-' || val === '--') return '';
+  if (val.startsWith('Category ')) {
+    return val.replace('Category ', '').trim();
+  }
+  return val;
+};
+
 interface PhotoSignatureProps {
   mode?: 'capture' | 'update';
   onNext?: () => void;
@@ -73,8 +81,8 @@ export function PhotoSignature({
   const showAuthInputs = !hasExistingLimit || !hasExistingMandate;
 
   const [inputMandate, setInputMandate] = useState(() => {
-    if (mode !== 'update' && state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') return state.params.mandate;
-    if (relationDetails?.signatoryLevel && relationDetails?.signatoryLevel !== '-' && relationDetails?.signatoryLevel !== '--') return relationDetails.signatoryLevel;
+    if (mode !== 'update' && state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') return normalizeMandate(state.params.mandate);
+    if (relationDetails?.signatoryLevel && relationDetails?.signatoryLevel !== '-' && relationDetails?.signatoryLevel !== '--') return normalizeMandate(relationDetails.signatoryLevel);
     return '';
   });
 
@@ -87,8 +95,8 @@ export function PhotoSignature({
   const [isAuthModalSaved, setIsAuthModalSaved] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [savedMandate, setSavedMandate] = useState(() => {
-    if (mode !== 'update' && state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') return state.params.mandate;
-    if (relationDetails?.signatoryLevel && relationDetails?.signatoryLevel !== '-' && relationDetails?.signatoryLevel !== '--') return relationDetails.signatoryLevel;
+    if (mode !== 'update' && state.params.mandate && state.params.mandate !== '-' && state.params.mandate !== '--') return normalizeMandate(state.params.mandate);
+    if (relationDetails?.signatoryLevel && relationDetails?.signatoryLevel !== '-' && relationDetails?.signatoryLevel !== '--') return normalizeMandate(relationDetails.signatoryLevel);
     return '';
   });
   const [savedLimit, setSavedLimit] = useState(() => {
@@ -129,8 +137,9 @@ export function PhotoSignature({
   useEffect(() => {
     if (relationDetails) {
       if (relationDetails.signatoryLevel && relationDetails.signatoryLevel !== '-' && relationDetails.signatoryLevel !== '--') {
-        setInputMandate(relationDetails.signatoryLevel);
-        setSavedMandate(relationDetails.signatoryLevel);
+        const norm = normalizeMandate(relationDetails.signatoryLevel);
+        setInputMandate(norm);
+        setSavedMandate(norm);
       }
       if (relationDetails.amtlimit !== undefined && relationDetails.amtlimit !== null && relationDetails.amtlimit !== 0) {
         setInputLimit(relationDetails.amtlimit.toString());
@@ -183,6 +192,28 @@ export function PhotoSignature({
       setIsAsideOpen(true);
     }
   }, [mode]);
+
+  // Extract category and limit from existing images in update mode
+  useEffect(() => {
+    if (mode === 'update' && images && images.status === 'success' && images.data) {
+      const data = images.data;
+      const source = (data.unapproved?.limit && (data.unapproved?.category || data.unapproved?.mandate))
+        ? data.unapproved
+        : data.approved;
+
+      const apiCategory = source?.category || source?.mandate;
+      const apiLimit = source?.limit;
+
+      if (apiCategory && apiLimit && apiCategory !== '-' && apiCategory !== '--' && apiLimit !== '-' && apiLimit !== '--') {
+        const normCategory = normalizeMandate(apiCategory);
+        setInputMandate(normCategory);
+        setSavedMandate(normCategory);
+        setInputLimit(apiLimit.toString());
+        setSavedLimit(apiLimit.toString());
+        setIsAuthModalSaved(true);
+      }
+    }
+  }, [mode, images]);
 
   const hasPrefetched = useRef(false);
 
@@ -322,8 +353,8 @@ export function PhotoSignature({
   };
 
   const handleSubmit = async () => {
-    const finalLimit = showAuthInputs ? inputLimit : state.params.limit;
-    const finalMandate = showAuthInputs ? inputMandate : state.params.mandate;
+    const finalLimit = (showAuthInputs || mode === 'update') ? inputLimit : state.params.limit;
+    const finalMandate = normalizeMandate((showAuthInputs || mode === 'update') ? inputMandate : state.params.mandate);
 
     // If no changes, just go to next step
     if (!isPhotoChanged && !isSignatureChanged && state.data.photo && state.data.signature && (!showAuthInputs || (finalLimit === state.params.limit && finalMandate === state.params.mandate))) {
@@ -498,16 +529,16 @@ export function PhotoSignature({
                         Limit: <span className="font-mono font-semibold text-slate-700">{formattedLimit}</span>
                       </span>
                     )}
-                    {showAuthInputs && isAuthModalSaved && (
+                    {showAuthInputs && isAuthModalSaved && (mode !== 'update' || images !== null) && (
                       <button
                         type="button"
                         onClick={() => {
                           setIsAuthModalSaved(false);
                           setIsModifying(true);
                         }}
-                        className="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                        className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 uppercase tracking-wider animate-pulse transition-colors"
                       >
-                        (Modify)
+                        Modify
                       </button>
                     )}
                   </div>
@@ -1037,7 +1068,7 @@ export function PhotoSignature({
             onCancel={() => setEditingSignature(false)}
           />
         )}
-        {showAuthInputs && !isAuthModalSaved && (
+        {showAuthInputs && !isAuthModalSaved && (mode !== 'update' || images !== null) && (
           <div 
             onClick={isModifying ? () => {
               setInputMandate(savedMandate);
@@ -1083,7 +1114,7 @@ export function PhotoSignature({
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Signatory Level (Category) <span className="text-rose-500">*</span></label>
                   <select
-                    value={inputMandate}
+                    value={normalizeMandate(inputMandate)}
                     onChange={(e) => {
                       const val = e.target.value;
                       setInputMandate(val);
@@ -1095,10 +1126,10 @@ export function PhotoSignature({
                   >
                     <option value="">Select Category</option>
                     <option value="N/A">N/A</option>
-                    <option value="Category A">Category A</option>
-                    <option value="Category B">Category B</option>
-                    <option value="Category C">Category C</option>
-                    <option value="Category D">Category D</option>
+                    <option value="A">Category A</option>
+                    <option value="B">Category B</option>
+                    <option value="C">Category C</option>
+                    <option value="D">Category D</option>
                   </select>
                 </div>
 

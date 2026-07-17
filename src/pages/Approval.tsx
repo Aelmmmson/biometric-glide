@@ -99,6 +99,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
   const [accountRelations, setAccountRelations] = useState<any[]>([]);
   const [checkedRelations, setCheckedRelations] = useState<Record<string, boolean>>({});
   const [isAccountSubmitting, setIsAccountSubmitting] = useState(false);
+  const [accountMandate, setAccountMandate] = useState<string>('');
 
   useEffect(() => {
     getPostingDate().then(setPostingDate).catch(console.error);
@@ -199,6 +200,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
     try {
       const res = await getImagesByAccount(accountNo);
       if (res.status === 'success' && res.data?.enq_details) {
+        setAccountMandate(res.data.account_mandate || '');
         const detailsPromises = res.data.enq_details.map(async (rel) => {
           const detailRes = await searchImages(rel.relation_no);
           return detailRes.status === 'success' ? detailRes.data : null;
@@ -741,7 +743,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
     );
   };
 
-  const renderRelationSectionData = (relData: any, section: 'approved' | 'unapproved', title: string, Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>, limit: string | number, mandate: string) => {
+  const renderRelationSectionData = (relData: any, section: 'approved' | 'unapproved', title: string, Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>, limit: string | number, category: string) => {
     if (!relData) return null;
 
     const data = section === 'approved' ? relData.approved : relData.unapproved;
@@ -762,8 +764,8 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
               <Badge variant="secondary" className="ml-2 text-xs">{limit || 'N/A'}</Badge>
             </div>
             <div className="text-center">
-              <Badge variant="outline" className="text-xs">Mandate</Badge>
-              <Badge variant="secondary" className="ml-2 text-xs">{mandate || 'N/A'}</Badge>
+              <Badge variant="outline" className="text-xs">Category</Badge>
+              <Badge variant="secondary" className="ml-2 text-xs">{category || 'N/A'}</Badge>
             </div>
           </div>
         </CardHeader>
@@ -993,8 +995,8 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
                       <>
                         {renderActionButtons()}
                         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
-                          {renderSection('approved', 'Approved Images', CheckCircle, searchResults.data.approved?.limit || '', searchResults.data.approved?.mandate || '')}
-                          {renderSection('unapproved', 'Pending Review', AlertCircle, searchResults.data.unapproved?.limit || '', searchResults.data.unapproved?.mandate || '')}
+                           {renderSection('approved', 'Approved Images', CheckCircle, searchResults.data.approved?.limit || '', searchResults.data.approved?.category || searchResults.data.approved?.mandate || '')}
+                           {renderSection('unapproved', 'Pending Review', AlertCircle, searchResults.data.unapproved?.limit || '', searchResults.data.unapproved?.category || searchResults.data.unapproved?.mandate || '')}
                         </div>
                       </>
                     );
@@ -1031,7 +1033,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
                           <Badge className="border-none bg-blue-700 text-white hover:bg-blue-700">#{accountParams?.custNo || ''}</Badge>
                         </div>
                         <h2 className="text-lg font-bold text-white">
-                          Account Mandate: {accountRelations[0]?.unapproved?.mandate || accountRelations[0]?.approved?.mandate || 'Mandate'}
+                          Account Mandate: {accountMandate || 'Mandate'}
                         </h2>
                         <p className="text-xs text-blue-100">
                           Approval Dashboard for Signatories
@@ -1145,7 +1147,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
                             Limit: {rel.unapproved?.limit || rel.approved?.limit || 'N/A'}
                           </Badge>
                           <Badge variant="outline" className="border-slate-200 bg-white text-xs font-bold text-slate-700">
-                            Category: {rel.unapproved?.mandate || rel.approved?.mandate || 'N/A'}
+                            Category: {rel.unapproved?.category || rel.approved?.category || rel.unapproved?.mandate || rel.approved?.mandate || 'N/A'}
                           </Badge>
                           <Badge
                             className={rel.unapproved && (rel.unapproved.photo || rel.unapproved.accsign || rel.unapproved.thumbprint1 || rel.unapproved.thumbprint2) ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}
@@ -1157,8 +1159,8 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
 
                       <CardContent className="p-4">
                         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                          {renderRelationSectionData(rel, 'approved', 'Approved Specimens', CheckCircle, rel.approved?.limit || '', rel.approved?.mandate || '')}
-                          {renderRelationSectionData(rel, 'unapproved', 'Pending Review', AlertCircle, rel.unapproved?.limit || '', rel.unapproved?.mandate || '')}
+                          {renderRelationSectionData(rel, 'approved', 'Approved Specimens', CheckCircle, rel.approved?.limit || '', rel.approved?.category || rel.approved?.mandate || '')}
+                          {renderRelationSectionData(rel, 'unapproved', 'Pending Review', AlertCircle, rel.unapproved?.limit || '', rel.unapproved?.category || rel.unapproved?.mandate || '')}
                         </div>
                       </CardContent>
                     </Card>

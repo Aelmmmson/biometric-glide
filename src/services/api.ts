@@ -7,6 +7,26 @@ const getBaseUrl = () => {
   return '/legacy-imaging';
 };
 
+const throwHttpError = async (response: Response, preloadedText?: string) => {
+  let errorMsg = `HTTP error! status: ${response.status}`;
+  try {
+    const text = preloadedText || await response.text();
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed) {
+        if (parsed.message) errorMsg = parsed.message;
+        else if (parsed.error) errorMsg = parsed.error;
+        else if (parsed.response_msg) errorMsg = parsed.response_msg;
+      }
+    } catch {
+      if (text) errorMsg = text;
+    }
+  } catch {
+    // Ignore
+  }
+  throw new Error(errorMsg);
+};
+
 export interface CaptureResponse {
   success: boolean;
   message?: string;
@@ -59,8 +79,9 @@ export interface SearchImagesResponse {
       documents?: DocumentData[];
       thumbprint1?: string; // Right thumb
       thumbprint2?: string; // Left thumb
-      limit?: string;
+      limit?: string | number;
       mandate?: string;
+      category?: string;
     };
     unapproved?: {
       photo?: string;
@@ -68,8 +89,9 @@ export interface SearchImagesResponse {
       documents?: DocumentData[];
       thumbprint1?: string;
       thumbprint2?: string;
-      limit?: string;
+      limit?: string | number;
       mandate?: string;
+      category?: string;
     };
     name?: string;
     relation_no?: string;
@@ -403,7 +425,7 @@ export const captureBrowse = async (
 
     if (!response.ok) {
       console.error('captureBrowse server error:', responseText, 'Status:', response.status);
-      throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+      await throwHttpError(response, responseText);
     }
 
     if (responseText.trim() === 'Array ()') {
@@ -441,12 +463,13 @@ export const captureBrowse = async (
     };
   } catch (error) {
     const uiError = handleSystemError(error, 'api.captureBrowse');
-    if (isStandaloneRelation(relationNumber)) {
+    if (isStandaloneRelation(relationNumber) && uiError.category === 'Network/Connection') {
       return { success: true, message: 'Saved locally in standalone mode' };
     }
+    const detailedMsg = error instanceof Error ? error.message : String(error);
     return { 
       success: false, 
-      message: `${uiError.alert} ${uiError.action}`
+      message: `${uiError.alert} ${uiError.action}\nDetails: ${detailedMsg}`
     };
   }
 };
@@ -531,7 +554,7 @@ export const captureIdentification = async (
 
     if (!response.ok) {
       console.error('captureIdentification server error:', responseText, 'Status:', response.status);
-      throw new Error(`HTTP error! status: ${response.status}, responseText}`);
+      await throwHttpError(response, responseText);
     }
 
     if (responseText.trim() === 'Array ()') {
@@ -568,15 +591,16 @@ export const captureIdentification = async (
     };
   } catch (error) {
     const uiError = handleSystemError(error, 'api.captureIdentification');
-    if (isStandaloneRelation(relationNumber)) {
+    if (isStandaloneRelation(relationNumber) && uiError.category === 'Network/Connection') {
       return {
         success: true,
         message: 'Saved locally in standalone mode',
       };
     }
+    const detailedMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      message: `${uiError.alert} ${uiError.action}`,
+      message: `${uiError.alert} ${uiError.action}\nDetails: ${detailedMsg}`,
     };
   }
 };
@@ -637,19 +661,20 @@ export const saveData = async (data: {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      await throwHttpError(response);
     }
 
     const result = await response.text();
     return { success: true, message: result };
   } catch (error) {
     const uiError = handleSystemError(error, 'api.saveData');
-    if (isStandaloneRelation(relationNumber)) {
+    if (isStandaloneRelation(relationNumber) && uiError.category === 'Network/Connection') {
       return { success: true, message: 'Saved locally in standalone mode' };
     }
+    const detailedMsg = error instanceof Error ? error.message : String(error);
     return { 
       success: false, 
-      message: `${uiError.alert} ${uiError.action}`
+      message: `${uiError.alert} ${uiError.action}\nDetails: ${detailedMsg}`
     };
   }
 };
@@ -720,23 +745,24 @@ export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: strin
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      await throwHttpError(response);
     }
 
     const result = await response.json();
     return result;
   } catch (error) {
     const uiError = handleSystemError(error, 'api.captureThumbprint');
-    if (isStandaloneRelation(relationNo)) {
+    if (isStandaloneRelation(relationNo) && uiError.category === 'Network/Connection') {
       return {
         response_code: 0,
         response_msg: 'Captured locally in standalone mode',
         image: mockFp
       };
     }
+    const detailedMsg = error instanceof Error ? error.message : String(error);
     return {
       response_code: -1,
-      response_msg: `${uiError.alert} ${uiError.action}`
+      response_msg: `${uiError.alert} ${uiError.action}\nDetails: ${detailedMsg}`
     };
   }
 };
@@ -833,6 +859,7 @@ export const searchImages = async (relationno: string): Promise<SearchImagesResp
         thumbprint1,
         thumbprint2,
         limit: rel.amtlimit?.toString(),
+        category: rel.signatoryLevel,
         mandate: acc?.mandate,
         documents: (idFront || idBack) ? [
           {
@@ -852,6 +879,7 @@ export const searchImages = async (relationno: string): Promise<SearchImagesResp
         thumbprint2: '',
         documents: [] as DocumentData[],
         limit: '',
+        category: '',
         mandate: ''
       };
 
