@@ -23,7 +23,7 @@ const Gateway = () => {
   // Determine which page to show
   if (path.startsWith('/imaging/capture')) {
     if (!parsed || parsed.action !== 'capture') {
-      return <NotFound message="<strong>Invalid capture URL format.</strong><br><br>Expected: /imaging/capture-[RELATION_NO]-[CAPTURED_BY]-[CAPTURED_DATE]<br>Date Format: YYYY-MM-DD<br><br>Example: /imaging/capture-123456-admin-2024-04-21" />;
+      return <NotFound message="<strong>Invalid capture URL format.</strong><br><br>Expected: /imaging/capture-[RELATION_NO]-[BATCH_NO]-[CAPTURED_BY]-[CAPTURED_DATE]<br>Date Format: YYYY-MM-DD<br><br>Example: /imaging/capture-123456-B001-admin-2024-04-21" />;
     }
     return <Index />;
   }

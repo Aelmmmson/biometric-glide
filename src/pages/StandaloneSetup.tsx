@@ -937,14 +937,14 @@ export default function StandaloneSetup() {
 
     const today = new Date().toISOString().split('T')[0];
     openCenteredWindow(
-      `${window.location.origin}/imaging/capture-${finalRelNo}-${teller}-${today}`
+      `${window.location.origin}/imaging/capture-${finalRelNo}-${batch}-${teller}-${today}`
     );
   };
 
   // Launcher actions
   const handleLaunchCapture = (relationNo: string) => {
     const today = new Date().toISOString().split('T')[0];
-    navigate(`/imaging/capture-${relationNo}-${teller}-${today}`);
+    navigate(`/imaging/capture-${relationNo}-${batch}-${teller}-${today}`);
   };
 
   const handleLaunchUpdate = (rel: StandaloneRelation) => {

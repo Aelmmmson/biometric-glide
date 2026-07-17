@@ -158,16 +158,17 @@ export const parseBiometricParams = (currentPath?: string): { action: string; pa
   const path = currentPath || window.location.pathname;
   
   // Capture Pattern: strict match at the end
-  const captureMatch = path.match(/\/capture-([0-9a-zA-Z]+)-([0-9a-zA-Z_-]+)-([0-9]{4}-[0-9]{2}-[0-9]{2})$/);
+  const captureMatch = path.match(/\/capture-([0-9a-zA-Z]+)-([0-9a-zA-Z_.-]+)-([0-9a-zA-Z_-]+)-([0-9]{4}-[0-9]{2}-[0-9]{2})$/);
   if (captureMatch) {
-    const dateStr = captureMatch[3];
+    const dateStr = captureMatch[4];
     if (!isValidDate(dateStr)) return null;
 
     return {
       action: 'capture',
       params: {
         relationNo: captureMatch[1],
-        capturedBy: captureMatch[2],
+        batch: captureMatch[2],
+        capturedBy: captureMatch[3],
         capturedDate: dateStr
       }
     };
@@ -617,7 +618,7 @@ export const saveData = async (data: {
     formData.append("effectivedate", "");
     formData.append("sigcat", data.mandate || "");
     formData.append("comment1", data.comment || "");
-    formData.append("type", data.action === 'AMEND' ? "capture" : "update");
+    formData.append("type", data.action === 'AMEND' ? "capture" : "capture");
     formData.append("limit", data.limit || "");
     formData.append("pix", photoBase64);
     formData.append("photochange", "");
