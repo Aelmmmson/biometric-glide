@@ -178,7 +178,7 @@ const isValidDate = (dateString: string): boolean => {
 
 export const parseBiometricParams = (currentPath?: string): { action: string; params: BiometricParams } | null => {
   const path = currentPath || window.location.pathname;
-  
+
   // Capture Pattern: strict match at the end
   const captureMatch = path.match(/\/capture-([0-9a-zA-Z]+)-([0-9a-zA-Z_.-]+)-([0-9a-zA-Z_-]+)-([0-9]{4}-[0-9]{2}-[0-9]{2})$/);
   if (captureMatch) {
@@ -289,8 +289,8 @@ export interface StandaloneRelation {
 
 export const isStandaloneRelation = (relationNo: string): boolean => {
   const isDev = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' || 
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
     window.location.hostname === '::' ||
     window.location.hostname.includes('localhost')
   );
@@ -304,8 +304,8 @@ export const isStandaloneRelation = (relationNo: string): boolean => {
 
 export const isStandaloneAccount = (accountNo: string): boolean => {
   const isDev = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' || 
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
     window.location.hostname === '::' ||
     window.location.hostname.includes('localhost')
   );
@@ -344,11 +344,11 @@ export const getStandaloneAccountDetails = (accountNumber: string) => {
     const rels = JSON.parse(relsJson);
     const rawAccount = accountNumber.replace(/\D/g, '');
     const acc = accounts[accountNumber] || accounts[rawAccount] || Object.values(accounts).find((a: StandaloneAccount) => a.accountNumber === accountNumber || a.accountNumber.replace(/\D/g, '') === rawAccount);
-    
+
     if (acc) {
       const enq_details: EnqDetail[] = [];
       const accRelations = (Object.values(rels) as StandaloneRelation[]).filter((r: StandaloneRelation) => r.accountNumber === acc.accountNumber);
-      
+
       for (const rel of accRelations) {
         const rId = rel.relationNo;
         const biometricsJson = localStorage.getItem(`standalone_biometrics_${rId}`);
@@ -385,20 +385,20 @@ export const getStandaloneAccountDetails = (accountNumber: string) => {
 
 // Immediate save for photo/signature captures
 export const captureBrowse = async (
-  imageData: string, 
+  imageData: string,
   type: number, // 1 for photo, 2 for signature
   cus_no?: string
 ): Promise<CaptureResponse> => {
   const relationNumber = cus_no || getRelationNumber();
   const base64Data = getBase64String(imageData);
-  
+
   // Standalone: cache local data
   const cached = localStorage.getItem(`standalone_biometrics_${relationNumber}`);
   const bioData = cached ? JSON.parse(cached) : {};
   if (type === 1) bioData.photo = base64Data;
   else if (type === 2) bioData.signature = base64Data;
   localStorage.setItem(`standalone_biometrics_${relationNumber}`, JSON.stringify(bioData));
-  
+
   updateRelationCaptureStatus(relationNumber, type === 1 ? 'photo' : 'signature', true);
 
   try {
@@ -467,8 +467,8 @@ export const captureBrowse = async (
       return { success: true, message: 'Saved locally in standalone mode' };
     }
     const detailedMsg = error instanceof Error ? error.message : String(error);
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: `${uiError.alert} ${uiError.action}\nDetails: ${detailedMsg}`
     };
   }
@@ -514,7 +514,7 @@ export const captureIdentification = async (
   cus_no?: string
 ): Promise<CaptureResponse> => {
   const relationNumber = cus_no || getRelationNumber();
-  
+
   // Standalone cache
   const cached = localStorage.getItem(`standalone_biometrics_${relationNumber}`);
   const bioData = cached ? JSON.parse(cached) : {};
@@ -672,8 +672,8 @@ export const saveData = async (data: {
       return { success: true, message: 'Saved locally in standalone mode' };
     }
     const detailedMsg = error instanceof Error ? error.message : String(error);
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: `${uiError.alert} ${uiError.action}\nDetails: ${detailedMsg}`
     };
   }
@@ -699,7 +699,7 @@ export const updateData = async (data: {
 // Initialize fingerprint device
 export const initFingerprint = async (): Promise<CaptureResponse> => {
   try {
-    const response = await fetch('http://192.168.1.142:8080/init', {
+    const response = await fetch('http://127.0.0.1:8080/init', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -713,8 +713,8 @@ export const initFingerprint = async (): Promise<CaptureResponse> => {
     return { success: true, message: 'Fingerprint device initialized' };
   } catch (error) {
     const uiError = handleSystemError(error, 'api.initFingerprint');
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: `${uiError.alert} ${uiError.action}`
     };
   }
@@ -724,7 +724,7 @@ export const initFingerprint = async (): Promise<CaptureResponse> => {
 // Capture thumbprint for specific thumb (1 or 2)
 export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: string): Promise<FingerprintResponse> => {
   const relationNo = relationNumber || getRelationNumber();
-  
+
   // Standalone cache with generic placeholder fingerprint
   const cached = localStorage.getItem(`standalone_biometrics_${relationNo}`);
   const bioData = cached ? JSON.parse(cached) : {};
@@ -739,7 +739,7 @@ export const captureThumbprint = async (thumb: "1" | "2", relationNumber?: strin
     formData.append('relation_no', relationNo);
     formData.append('thumbprint', thumb);  // Payload: '1' for thumbprint 1 (right), '2' for thumbprint 2 (left)
 
-    const response = await fetch('http://192.168.1.142:8080/capture', {
+    const response = await fetch('http://127.0.0.1:8080/capture', {
       method: 'POST',
       body: formData,
     });
@@ -894,7 +894,7 @@ export const searchImages = async (relationno: string): Promise<SearchImagesResp
         }
       };
     }
-   
+
     const response = await fetch(`${getBaseUrl()}/get_temp_image-${relationno}`, {
       method: 'GET',
       headers: {
@@ -945,7 +945,7 @@ export const enquiryImages = async (customerId: string): Promise<EnquiryImagesRe
           const acc = accounts[rel.accountNumber];
           const biometricsJson = localStorage.getItem(`standalone_biometrics_${customerId}`);
           const biometrics = biometricsJson ? JSON.parse(biometricsJson) : {};
-          
+
           return {
             status: 'success',
             message: 'Images retrieved from standalone store',
@@ -1112,7 +1112,7 @@ export const getChequeDetails = async (chequeNumber: string): Promise<ChequeDeta
     });
 
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const html = await response.text();
@@ -1124,26 +1124,26 @@ export const getChequeDetails = async (chequeNumber: string): Promise<ChequeDeta
     // We search the document for the td matching the label, then traverse to find the corresponding value td.
     const tds = Array.from(doc.querySelectorAll('td'));
     const extractFieldValue = (label: string): string => {
-        const exactMatchLabel = `${label}`;
-        const labelTd = tds.find(td => td.textContent?.trim() === exactMatchLabel);
-        if (labelTd) {
-            // It's usually Label -> div spacer -> ':' -> value
-            // Safe traversal: find next sibling td that contains text content that isn't ':' or empty spaces
-            let next = labelTd.nextElementSibling;
-            
-            // Advance through spacer td and colon td
-            if (next && next.querySelector('div')) {
-                next = next.nextElementSibling; 
-            }
-            if (next && next.textContent?.trim() === ':') {
-                next = next.nextElementSibling;
-            }
-            // If the structure matches:
-            if (next) {
-                return next.textContent?.trim() || '';
-            }
+      const exactMatchLabel = `${label}`;
+      const labelTd = tds.find(td => td.textContent?.trim() === exactMatchLabel);
+      if (labelTd) {
+        // It's usually Label -> div spacer -> ':' -> value
+        // Safe traversal: find next sibling td that contains text content that isn't ':' or empty spaces
+        let next = labelTd.nextElementSibling;
+
+        // Advance through spacer td and colon td
+        if (next && next.querySelector('div')) {
+          next = next.nextElementSibling;
         }
-        return '';
+        if (next && next.textContent?.trim() === ':') {
+          next = next.nextElementSibling;
+        }
+        // If the structure matches:
+        if (next) {
+          return next.textContent?.trim() || '';
+        }
+      }
+      return '';
     };
 
     // Extract images (src="data:image/...")
@@ -1154,10 +1154,10 @@ export const getChequeDetails = async (chequeNumber: string): Promise<ChequeDeta
     // Check if the page didn't actually return a cheque (e.g., fields are empty and no images).
     const chequeNo = extractFieldValue('Cheque No');
     if (!chequeNo && !frontImage) {
-        return {
-          status: 'error',
-          message: 'Cheque record not found.',
-        };
+      return {
+        status: 'error',
+        message: 'Cheque record not found.',
+      };
     }
 
     return {
@@ -1219,7 +1219,7 @@ export const getAccountSignatures = async (accountNumber: string): Promise<Enqui
     });
 
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
@@ -1242,7 +1242,7 @@ export const approveCustomerImages = async (params: {
 }): Promise<ApprovalResponse> => {
   try {
     const { relationno, batch, custno, approved_by, hostname, terminal_ip, posting_date } = params;
-    
+
     if (isStandaloneRelation(relationno)) {
       const relsJson = localStorage.getItem('standalone_relations');
       if (relsJson) {
@@ -1263,13 +1263,13 @@ export const approveCustomerImages = async (params: {
     if (posting_date) {
       url += `-${posting_date}`;
     }
-    
+
     const response = await fetch(url, {
       method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
     );
 
     if (!response.ok) {
@@ -1282,7 +1282,7 @@ export const approveCustomerImages = async (params: {
     console.log('Approval response:', { contentType, responseText });
 
     const cleanResponse = responseText.trim().toLowerCase();
-    
+
     if (cleanResponse === '1' || cleanResponse === 'success') {
       return {
         status: 'success',
@@ -1299,7 +1299,7 @@ export const approveCustomerImages = async (params: {
           code: 0
         };
       }
-      
+
       if (cleanResponse.includes('error') || cleanResponse.includes('fail')) {
         return {
           status: 'error',
@@ -1329,7 +1329,7 @@ export const approveCustomerImages = async (params: {
       }
     } catch (jsonError) {
       console.error('JSON parsing error:', jsonError, 'Response text:', responseText);
-      
+
       if (responseText.toLowerCase().includes('success') || responseText === '1') {
         return {
           status: 'success',
@@ -1337,7 +1337,7 @@ export const approveCustomerImages = async (params: {
           code: 0
         };
       }
-      
+
       return {
         status: 'error',
         message: 'Invalid response format from server'
@@ -1373,7 +1373,7 @@ export const rejectCustomerImages = async (relationno: string, reason: string, i
     }
 
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     return {
       status: 'success',
       message: 'Image rejected successfully'
@@ -1527,32 +1527,32 @@ export const getPostingDate = async (): Promise<string> => {
  * signature against the mandate signature.
  */
 export const verifySignature = async (
-    chequeImage: string, 
-    mandateImage: string,
-    roi?: { x: number, y: number, w: number, h: number }
+  chequeImage: string,
+  mandateImage: string,
+  roi?: { x: number, y: number, w: number, h: number }
 ): Promise<SignatureVerificationResponse | null> => {
-    try {
-        const response = await fetch('http://127.0.0.1:8130/verify', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                cheque_image: chequeImage,
-                mandate_image: mandateImage,
-                roi: roi // Pass the crop coordinates
-            }),
-        });
+  try {
+    const response = await fetch('http://127.0.0.1:8130/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        cheque_image: chequeImage,
+        mandate_image: mandateImage,
+        roi: roi // Pass the crop coordinates
+      }),
+    });
 
-        if (!response.ok) {
-            throw new Error(`AI Engine Error: ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Signature verification connection failed:', error);
-        return null;
+    if (!response.ok) {
+      throw new Error(`AI Engine Error: ${response.status}`);
     }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Signature verification connection failed:', error);
+    return null;
+  }
 };
 
 export interface ChequeMandateResponse {

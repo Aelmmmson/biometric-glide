@@ -64,7 +64,7 @@ The system uses strict URL routing formats parsed by [Gateway.tsx](file:///c:/Us
 | :--- | :--- | :--- |
 | **Photo** | Webcam (built-in or USB) | Standard browser `getUserMedia` API (falls back to manual file upload) |
 | **Signature** | Topaz SigWeb Tablet | Topaz SigWeb SDK (loaded dynamically via `SigWebTablet.ts`) |
-| **Fingerprint** | Suprema Scanner | Local middleware API endpoint (`http://192.168.1.142:8080`) |
+| **Fingerprint** | Suprema Scanner | Local middleware API endpoint (`http://127.0.0.1:8080`) |
 | **ID Documents** | Flatbed scanner or Mobile upload | Native file input upload |
 
 ---
