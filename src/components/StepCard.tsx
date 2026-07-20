@@ -13,7 +13,7 @@ export function StepCard({ children, className = '' }: StepCardProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`bg-card rounded-2xl shadow-card p-8 border border-border/50 ${className}`}
+      className={`bg-card rounded-2xl shadow-card p-5 md:p-6 border border-border/50 ${className}`}
     >
       {children}
     </motion.div>

@@ -86,12 +86,13 @@ const Update = ({ relationNo }: UpdateProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-soft">
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+      <div className="w-full px-3 md:px-6 py-6">
+        <div className="grid xl:grid-cols-5 gap-6 max-w-[1700px] mx-auto">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
+            className="xl:col-span-1"
           >
             <ProgressSidebar
               currentStep={state.currentStep}
@@ -102,7 +103,7 @@ const Update = ({ relationNo }: UpdateProps) => {
             />
           </motion.div>
 
-          <div className="lg:col-span-3">
+          <div className="xl:col-span-4">
             <AnimatePresence mode="wait">
               <motion.div
                 key={state.currentStep}

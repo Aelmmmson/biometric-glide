@@ -649,7 +649,7 @@ export const saveData = async (data: {
     formData.append("sigchange", signatureBase64);
     formData.append("relationid", relationNumber);
     formData.append("batchno", data.batchNumber);
-    formData.append("customerno", data.cus_no || "");
+    formData.append("customerno", "");
     formData.append("action", data.action || "add");
     formData.append("capturedBy", data.capturedBy || "");
     formData.append("capturedDate", data.capturedDate || "");

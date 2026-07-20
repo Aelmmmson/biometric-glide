@@ -29,6 +29,7 @@ import {
   SearchImagesResponse,
   getRelationNumber,
 } from "@/services/api";
+import { ExistingImagesCard } from "@/components/ExistingImagesCard";
 
 interface IdentificationProps {
   mode?: "capture" | "update";
@@ -293,190 +294,7 @@ export function Identification({
             : "Provide National ID and optionally add more documents."}
         </p>
 
-        {/* Aside (Update Mode Existing Images) */}
-        {mode === "update" && isAsideOpen && images && (
-          <motion.aside
-            initial={{ x: 320 }}
-            animate={{ x: 0 }}
-            exit={{ x: 320 }}
-            transition={{ duration: 0.3 }}
-            className="fixed md:top-12 top-[4.5rem] md:right-14 right-0 md:h-[calc(98vh-6rem)] h-[calc(98vh-4.5rem)] md:w-48 w-full bg-background border border-border rounded-lg md:rounded-l-lg shadow-lg p-4 overflow-auto z-50"
-          >
-            <div className="flex justify-between items-center mb-14 sticky top-3 bg-background pb-2 z-10">
-              <h3 className="text-base font-semibold">Customer Images</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAsideOpen(false)}
-                className="h-6 w-6 p-0"
-              >
-                <X className="w-4 h-4 bg-blue-50 rounded-full p-1" />
-              </Button>
-            </div>
 
-            {images.status !== "success" || !images.data ? (
-              <p className="text-muted-foreground text-sm">
-                No images available
-              </p>
-            ) : (
-              <div className="space-y-12">
-                {/* Unapproved Documents */}
-                <div>
-                  <h4 className="font-semibold mb-2 text-sm uppercase tracking-wide text-muted-foreground">
-                    Unapproved Documents
-                  </h4>
-                  {(images.data.unapproved?.documents ?? []).length > 0 ? (
-                    <div className="space-y-4">
-                      {images.data.unapproved!.documents!.map((doc, index) => {
-                        const typeLabel = doc.type
-                          .split("_")
-                          .map(
-                            (word) =>
-                              word.charAt(0).toUpperCase() + word.slice(1)
-                          )
-                          .join(" ");
-
-                        const frontSrc = getImageSrc(doc.sides.front);
-                        const backSrc = getImageSrc(doc.sides.back);
-
-                        return (
-                          <div key={index} className="space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              {typeLabel}
-                            </p>
-                            <div className="flex gap-3 justify-start">
-                              {frontSrc && (
-                                <div className="relative group w-20 h-20">
-                                  <img
-                                    src={frontSrc}
-                                    alt={`${typeLabel} front`}
-                                    className="w-full h-full object-cover rounded border cursor-pointer"
-                                    onClick={() => setViewingImage(frontSrc)}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingImage(frontSrc);
-                                    }}
-                                    className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    type="button"
-                                    title="View full image"
-                                  >
-                                    <Eye className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                </div>
-                              )}
-                              {backSrc && (
-                                <div className="relative group w-20 h-20">
-                                  <img
-                                    src={backSrc}
-                                    alt={`${typeLabel} back`}
-                                    className="w-full h-full object-cover rounded border cursor-pointer"
-                                    onClick={() => setViewingImage(backSrc)}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingImage(backSrc);
-                                    }}
-                                    className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    type="button"
-                                    title="View full image"
-                                  >
-                                    <Eye className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">None</p>
-                  )}
-                </div>
-
-                {/* Approved Documents */}
-                <div>
-                  <h4 className="font-semibold mb-2 text-sm uppercase tracking-wide text-muted-foreground">
-                    Approved Documents
-                  </h4>
-                  {(images.data.approved?.documents ?? []).length > 0 ? (
-                    <div className="space-y-4">
-                      {images.data.approved!.documents!.map((doc, index) => {
-                        const typeLabel = doc.type
-                          .split("_")
-                          .map(
-                            (word) =>
-                              word.charAt(0).toUpperCase() + word.slice(1)
-                          )
-                          .join(" ");
-
-                        const frontSrc = getImageSrc(doc.sides.front);
-                        const backSrc = getImageSrc(doc.sides.back);
-
-                        return (
-                          <div key={index} className="space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              {typeLabel}
-                            </p>
-                            <div className="flex gap-3 justify-start">
-                              {frontSrc && (
-                                <div className="relative group w-20 h-20">
-                                  <img
-                                    src={frontSrc}
-                                    alt={`${typeLabel} front`}
-                                    className="w-full h-full object-cover rounded border cursor-pointer"
-                                    onClick={() => setViewingImage(frontSrc)}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingImage(frontSrc);
-                                    }}
-                                    className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    type="button"
-                                    title="View full image"
-                                  >
-                                    <Eye className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                </div>
-                              )}
-                              {backSrc && (
-                                <div className="relative group w-20 h-20">
-                                  <img
-                                    src={backSrc}
-                                    alt={`${typeLabel} back`}
-                                    className="w-full h-full object-cover rounded border cursor-pointer"
-                                    onClick={() => setViewingImage(backSrc)}
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingImage(backSrc);
-                                    }}
-                                    className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    type="button"
-                                    title="View full image"
-                                  >
-                                    <Eye className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">None</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </motion.aside>
-        )}
 
         {/* Full Image Viewer */}
         {viewingImage && (
@@ -498,12 +316,8 @@ export function Identification({
           </div>
         )}
 
-        <div
-          className={`transition-all duration-300 ${
-            isAsideOpen ? "md:mr-48" : ""
-          } mr-0`}
-        >
-          <div className="space-y-8">
+        <div className={`grid grid-cols-1 ${mode === "update" && isAsideOpen && images ? "lg:grid-cols-12" : ""} gap-5 items-start`}>
+          <div className={`space-y-8 ${mode === "update" && isAsideOpen && images ? "lg:col-span-10" : ""}`}>
             {/* National ID Section */}
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -1131,6 +945,15 @@ export function Identification({
 
             <div className="text-sm text-muted-foreground">Step 2 of 4</div>
           </div>
+
+          {mode === "update" && isAsideOpen && images && (
+            <ExistingImagesCard
+              images={images}
+              onClose={() => setIsAsideOpen(false)}
+              onViewImage={setViewingImage}
+              className="lg:col-span-2"
+            />
+          )}
         </div>
       </motion.div>
     </StepCard>

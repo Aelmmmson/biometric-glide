@@ -20,6 +20,7 @@ import {
 } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { handleSystemError } from '@/lib/errorHandler';
+import { ExistingImagesCard } from '@/components/ExistingImagesCard';
 
 interface FingerprintProps {
   mode?: 'capture' | 'update';
@@ -189,145 +190,7 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
             {mode === 'update' ? 'Update your fingerprints.' : 'Place your finger on the scanner.'}
           </p>
 
-          {/* Aside - Update Mode */}
-          {mode === 'update' && isAsideOpen && images && (
-            <motion.aside
-              initial={{ x: 320 }}
-              animate={{ x: 0 }}
-              exit={{ x: 320 }}
-              transition={{ duration: 0.3 }}
-              className="fixed md:top-12 top-[4.5rem] md:right-14 right-0 md:h-[calc(98vh-6rem)] h-[calc(98vh-4.5rem)] md:w-48 w-full bg-background border border-border rounded-lg md:rounded-l-lg shadow-lg p-4 overflow-auto z-50"
-            >
-              <div className="flex justify-between items-center mb-4 sticky top-3 bg-background pb-2">
-                <h3 className="text-base font-semibold">Customer Images</h3>
-                <Button variant="ghost" size="sm" onClick={() => setIsAsideOpen(false)} className="h-6 w-6 p-0">
-                  <X className="w-4 h-4 bg-blue-50 rounded-full p-1" />
-                </Button>
-              </div>
-              {images.status !== 'success' || !images.data ? (
-                <p className="text-muted-foreground text-sm">No images available</p>
-              ) : (
-                <div className="space-y-4">
-                  {/* Unapproved */}
-                  {(images.data.unapproved?.thumbprint1 || images.data.unapproved?.thumbprint2) && (
-                    <div>
-                      <h4 className="font-semibold mb-1 text-sm uppercase tracking-wide text-muted-foreground">
-                        Unapproved
-                      </h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {images.data.unapproved?.thumbprint1 && getImageSrc(images.data.unapproved.thumbprint1) && (
-                          <div className="space-y-1 relative">
-                            <span className="text-xs font-medium text-muted-foreground">Thumb 1</span>
-                            <div className="relative group">
-                              <img
-                                src={getImageSrc(images.data.unapproved.thumbprint1)!}
-                                alt="Unapproved Thumb 1"
-                                className="w-full aspect-square object-cover rounded border cursor-pointer"
-                                onClick={() => setViewingImage(getImageSrc(images.data.unapproved.thumbprint1))}
-                              />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setViewingImage(getImageSrc(images.data.unapproved.thumbprint1));
-                                }}
-                                className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                type="button"
-                                title="View full image"
-                              >
-                                <Eye className="w-3 h-3 text-gray-600" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        {images.data.unapproved?.thumbprint2 && getImageSrc(images.data.unapproved.thumbprint2) && (
-                          <div className="space-y-1 relative">
-                            <span className="text-xs font-medium text-muted-foreground">Thumb 2</span>
-                            <div className="relative group">
-                              <img
-                                src={getImageSrc(images.data.unapproved.thumbprint2)!}
-                                alt="Unapproved Thumb 2"
-                                className="w-full aspect-square object-cover rounded border cursor-pointer"
-                                onClick={() => setViewingImage(getImageSrc(images.data.unapproved.thumbprint2))}
-                              />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setViewingImage(getImageSrc(images.data.unapproved.thumbprint2));
-                                }}
-                                className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                type="button"
-                                title="View full image"
-                              >
-                                <Eye className="w-3 h-3 text-gray-600" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {/* Approved */}
-                  {(images.data.approved?.thumbprint1 || images.data.approved?.thumbprint2) && (
-                    <div>
-                      <h4 className="font-semibold mb-1 text-sm uppercase tracking-wide text-muted-foreground">
-                        Approved
-                      </h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {images.data.approved?.thumbprint1 && getImageSrc(images.data.approved.thumbprint1) && (
-                          <div className="space-y-1 relative">
-                            <span className="text-xs font-medium text-muted-foreground">Thumb 1</span>
-                            <div className="relative group">
-                              <img
-                                src={getImageSrc(images.data.approved.thumbprint1)!}
-                                alt="Approved Thumb 1"
-                                className="w-full aspect-square object-cover rounded border cursor-pointer"
-                                onClick={() => setViewingImage(getImageSrc(images.data.approved.thumbprint1))}
-                              />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setViewingImage(getImageSrc(images.data.approved.thumbprint1));
-                                }}
-                                className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                type="button"
-                                title="View full image"
-                              >
-                                <Eye className="w-3 h-3 text-gray-600" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        {images.data.approved?.thumbprint2 && getImageSrc(images.data.approved.thumbprint2) && (
-                          <div className="space-y-1 relative">
-                            <span className="text-xs font-medium text-muted-foreground">Thumb 2</span>
-                            <div className="relative group">
-                              <img
-                                src={getImageSrc(images.data.approved.thumbprint2)!}
-                                alt="Approved Thumb 2"
-                                className="w-full aspect-square object-cover rounded border cursor-pointer"
-                                onClick={() => setViewingImage(getImageSrc(images.data.approved.thumbprint2))}
-                              />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setViewingImage(getImageSrc(images.data.approved.thumbprint2));
-                                }}
-                                className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                type="button"
-                                title="View full image"
-                              >
-                                <Eye className="w-3 h-3 text-gray-600" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </motion.aside>
-          )}
+
 
           {/* Full Image Viewer */}
           {viewingImage && (
@@ -345,7 +208,8 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
             </div>
           )}
 
-          <div className={`transition-all duration-300 ${isAsideOpen ? 'md:mr-48' : ''} mr-0`}>
+          <div className={`grid grid-cols-1 ${mode === 'update' && isAsideOpen && images ? 'lg:grid-cols-12' : ''} gap-5 items-start`}>
+            <div className={`space-y-6 ${mode === 'update' && isAsideOpen && images ? 'lg:col-span-10' : ''}`}>
             <div className={`grid ${showSecondary ? 'md:grid-cols-2' : 'grid-cols-1'} gap-8`}>
               {/* Primary Fingerprint */}
               <div className="space-y-4">
@@ -542,6 +406,16 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
               <div className="text-sm text-muted-foreground">Step 3 of 4</div>
             </div>
           </div>
+
+          {mode === 'update' && isAsideOpen && images && (
+            <ExistingImagesCard
+              images={images}
+              onClose={() => setIsAsideOpen(false)}
+              onViewImage={(src) => setViewingImage(src)}
+              className="lg:col-span-2"
+            />
+          )}
+        </div>
         </motion.div>
       </StepCard>
 
