@@ -85,20 +85,28 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
         setScanProgressThumb1(100);
         const fingerprintData = `data:image/jpeg;base64,${captureResult.image}`;
         dispatch({ type: 'SET_THUMBPRINT1', thumbprint1: fingerprintData });
-        toast({ title: 'Right thumb captured and saved to database successfully!' });
+        toast({ title: 'Primary fingerprint captured successfully!' });
         setIsScanningThumb1(false);
       } else {
-        throw new Error(captureResult.response_msg || 'Failed to capture right thumb');
+        throw new Error(captureResult.response_msg || 'Scan timed out or no finger detected');
       }
-    } catch (error) {
-      const uiError = handleSystemError(error, 'Fingerprint.handleStartScanThumb1');
+    } catch (error: any) {
       setIsScanningThumb1(false);
       setScanProgressThumb1(0);
-      toast({
-        title: uiError.alert,
-        description: uiError.action,
-        variant: 'destructive',
-      });
+      const errMsg = (error?.message || '').toLowerCase();
+      if (errMsg.includes('timeout') || errMsg.includes('time out') || errMsg.includes('delay') || errMsg.includes('no finger') || errMsg.includes('failed to capture') || errMsg.includes('scan timed out')) {
+        toast({
+          title: "Scan Timed Out",
+          description: "No finger detected on the scanner in time. Please click 'Scan Primary Finger' and place your finger firmly on the device.",
+        });
+      } else {
+        const uiError = handleSystemError(error, 'Fingerprint.handleStartScanThumb1');
+        toast({
+          title: uiError.alert,
+          description: uiError.action,
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -116,7 +124,7 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
       }
 
       setScanProgressThumb2(25);
-      toast({ title: 'Device initialized. Please place secondary fingerprint on scanner.' });
+      toast({ title: 'Device initialized. Please place secondary finger on scanner.' });
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setScanProgressThumb2(50);
@@ -126,20 +134,28 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
         setScanProgressThumb2(100);
         const fingerprintData = `data:image/jpeg;base64,${captureResult.image}`;
         dispatch({ type: 'SET_THUMBPRINT2', thumbprint2: fingerprintData });
-        toast({ title: 'Secondary fingerprint captured and saved to database successfully!' });
+        toast({ title: 'Secondary fingerprint captured successfully!' });
         setIsScanningThumb2(false);
       } else {
-        throw new Error(captureResult.response_msg || 'Failed to capture secondary fingerprint');
+        throw new Error(captureResult.response_msg || 'Scan timed out or no finger detected');
       }
-    } catch (error) {
-      const uiError = handleSystemError(error, 'Fingerprint.handleStartScanThumb2');
+    } catch (error: any) {
       setIsScanningThumb2(false);
       setScanProgressThumb2(0);
-      toast({
-        title: uiError.alert,
-        description: uiError.action,
-        variant: 'destructive',
-      });
+      const errMsg = (error?.message || '').toLowerCase();
+      if (errMsg.includes('timeout') || errMsg.includes('time out') || errMsg.includes('delay') || errMsg.includes('no finger') || errMsg.includes('failed to capture') || errMsg.includes('scan timed out')) {
+        toast({
+          title: "Scan Timed Out",
+          description: "No finger detected on the scanner in time. Please click 'Scan Secondary Finger' and place your finger firmly on the device.",
+        });
+      } else {
+        const uiError = handleSystemError(error, 'Fingerprint.handleStartScanThumb2');
+        toast({
+          title: uiError.alert,
+          description: uiError.action,
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -393,9 +409,13 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
 
             {/* Navigation */}
             <div className="flex items-center justify-between mt-8">
-              <Button onClick={handleBack} variant="outline" className="rounded-full px-6 py-2">
-                Back
-              </Button>
+              {mode === 'update' ? (
+                <Button onClick={handleBack} variant="outline" className="rounded-full px-6 py-2">
+                  Back
+                </Button>
+              ) : (
+                <div />
+              )}
 
               {canContinue && (
                 <Button onClick={handleContinue} className="rounded-full px-8 py-3 gradient-primary shadow-button">

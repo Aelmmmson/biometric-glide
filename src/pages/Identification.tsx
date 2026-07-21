@@ -912,13 +912,17 @@ export function Identification({
 
           {/* Navigation Buttons */}
           <div className="flex items-center justify-between mt-8">
-            <Button
-              onClick={handleBack}
-              variant="outline"
-              className="rounded-full px-6 py-2"
-            >
-              Back
-            </Button>
+            {mode === "update" ? (
+              <Button
+                onClick={handleBack}
+                variant="outline"
+                className="rounded-full px-6 py-2"
+              >
+                Back
+              </Button>
+            ) : (
+              <div />
+            )}
 
             <Button
               onClick={handleSubmit}

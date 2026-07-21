@@ -6,6 +6,7 @@ import { SearchImagesResponse } from '@/services/api';
 
 interface ExistingImagesCardProps {
   images: SearchImagesResponse | null;
+  isLoading?: boolean;
   onClose: () => void;
   onViewImage: (src: string) => void;
   className?: string;
@@ -13,6 +14,7 @@ interface ExistingImagesCardProps {
 
 export function ExistingImagesCard({
   images,
+  isLoading = false,
   onClose,
   onViewImage,
   className = '',
@@ -53,7 +55,24 @@ export function ExistingImagesCard({
         </Button>
       </div>
 
-      {images?.status !== 'success' || !images.data ? (
+      {isLoading || (!images && images !== null) ? (
+        <div className="space-y-4 animate-pulse">
+          <div className="space-y-2">
+            <div className="h-3 bg-amber-200/60 dark:bg-amber-900/40 rounded w-20 mb-2" />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="w-full aspect-square bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+              <div className="w-full aspect-square bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+            </div>
+          </div>
+          <div className="space-y-2 pt-2 border-t border-border/40">
+            <div className="h-3 bg-emerald-200/60 dark:bg-emerald-900/40 rounded w-20 mb-2" />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="w-full aspect-square bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+              <div className="w-full aspect-square bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+            </div>
+          </div>
+        </div>
+      ) : images?.status !== 'success' || !images.data ? (
         <div className="text-center py-6">
           <p className="text-muted-foreground text-[11px] italic">No existing images available</p>
         </div>

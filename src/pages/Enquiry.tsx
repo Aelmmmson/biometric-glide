@@ -198,9 +198,13 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
             <div className="flex flex-wrap items-center gap-3 shrink-0">
               <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col">
                 <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider mb-0.5">
-                  {fetchType === 'account' ? 'Account Number' : 'Account ID'}
+                  {fetchType === 'account' ? 'Account Number' : 'Relation No'}
                 </span>
-                <span className="text-sm font-extrabold text-slate-800 font-mono">{id}</span>
+                <span className="text-sm font-extrabold text-slate-800 font-mono">
+                  {id && (id.length > 18 || /[%=\\+\\/]/.test(id)) 
+                    ? (imageData?.enq_details?.[0]?.relation_no || 'Encrypted Customer Record') 
+                    : id}
+                </span>
               </div>
 
               {fetchType !== 'account' && imageData && imageData.account_mandate && imageData.account_mandate.trim() !== '' && (

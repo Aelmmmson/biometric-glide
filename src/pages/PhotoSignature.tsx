@@ -633,10 +633,10 @@ export function PhotoSignature({
               </div>
             </div>
           )}
-          <div className={`grid grid-cols-1 ${mode === 'update' && isAsideOpen && images ? 'lg:grid-cols-12' : 'md:grid-cols-2'} gap-5 items-start`}>
+          <div className={`grid grid-cols-1 ${mode === 'update' && isAsideOpen && images ? 'lg:grid-cols-12' : 'md:grid-cols-2'} gap-5 items-stretch`}>
             {/* Photo Section */}
-            <div className={`space-y-2 ${mode === 'update' && isAsideOpen && images ? 'lg:col-span-5' : ''}`}>
-              <h3 className="text-xl font-semibold flex items-center gap-2">
+            <div className={`space-y-2 flex flex-col h-full ${mode === 'update' && isAsideOpen && images ? 'lg:col-span-5' : ''}`}>
+              <h3 className="text-xl font-semibold flex items-center gap-2 shrink-0">
                 <Camera className="w-5 h-5 text-primary" />
                 Photo
               </h3>
@@ -646,7 +646,7 @@ export function PhotoSignature({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2 }}
-                className="relative border-2 border-dashed border-border rounded-xl p-8 text-center bg-accent/50 min-h-[300px] flex items-center justify-center"
+                className="relative border-2 border-dashed border-border rounded-xl p-6 text-center bg-accent/50 min-h-[340px] flex-1 flex flex-col items-center justify-center"
               >
                 <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-background rounded-full p-1 flex shadow-sm">
                   <button
@@ -703,29 +703,38 @@ export function PhotoSignature({
                     <p className="text-sm text-green-600 font-semibold">✓ Photo captured successfully</p>
                   </div>
                 ) : photoMode === 'capture' ? (
-                  <div className="space-y-4 pt-12">
-                    <Webcam
-                      audio={false}
-                      ref={webcamRef}
-                      screenshotFormat="image/jpeg"
-                      videoConstraints={videoConstraints}
-                      onUserMediaError={() => {
-                        toast({
-                          title: "Camera access failed",
-                          description: "Please check your permissions and try again. Falling back to upload.",
-                          variant: "destructive",
-                        });
-                        setPhotoMode('upload');
-                      }}
-                      className="w-full max-w-xs mx-auto rounded-lg border-2 border-border"
-                    />
-                    <Button
-                      onClick={capturePhoto}
-                      className="rounded-full gradient-primary"
-                      type="button"
-                    >
-                      Take Photo
-                    </Button>
+                  <div className="space-y-4 pt-12 relative">
+                    <div className="relative w-full max-w-xs mx-auto overflow-hidden rounded-2xl shadow-xl bg-slate-950">
+                      <Webcam
+                        audio={false}
+                        ref={webcamRef}
+                        screenshotFormat="image/jpeg"
+                        videoConstraints={videoConstraints}
+                        onUserMediaError={() => {
+                          toast({
+                            title: "Camera access failed",
+                            description: "Please check your permissions and try again. Falling back to upload.",
+                            variant: "destructive",
+                          });
+                          setPhotoMode('upload');
+                        }}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* iPhone Camera Style Shutter Button Overlay */}
+                      <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-1 z-10">
+                        <button
+                          onClick={capturePhoto}
+                          type="button"
+                          className="w-14 h-14 !rounded-full border-2 border-white/20 bg-black/30 backdrop-blur-xs flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg group"
+                          title="Take Photo"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-white group-hover:bg-slate-100 shadow-inner" />
+                        </button>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+                          Take Photo
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4 pt-12">
@@ -753,8 +762,8 @@ export function PhotoSignature({
               </motion.div>
             </div>
             {/* Signature Section */}
-            <div className={`space-y-2 ${mode === 'update' && isAsideOpen && images ? 'lg:col-span-5' : ''}`}>
-              <h3 className="text-xl font-semibold flex items-center gap-2">
+            <div className={`space-y-2 flex flex-col h-full ${mode === 'update' && isAsideOpen && images ? 'lg:col-span-5' : ''}`}>
+              <h3 className="text-xl font-semibold flex items-center gap-2 shrink-0">
                 <Signature className="w-5 h-5 text-primary" />
                 Signature
               </h3>
@@ -764,7 +773,7 @@ export function PhotoSignature({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2 }}
-                className="relative border-2 border-dashed border-border rounded-xl p-4 bg-accent/50 min-h-[300px] flex items-center justify-center"
+                className="relative border-2 border-dashed border-border rounded-xl p-6 bg-accent/50 min-h-[340px] flex-1 flex flex-col items-center justify-center"
               >
                 <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-background rounded-full p-1 flex shadow-sm">
                   <button

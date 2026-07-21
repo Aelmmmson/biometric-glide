@@ -63,9 +63,11 @@ The system uses strict URL routing formats parsed by [Gateway.tsx](file:///c:/Us
 | Feature | Device / Requirement | Integration Method |
 | :--- | :--- | :--- |
 | **Photo** | Webcam (built-in or USB) | Standard browser `getUserMedia` API (falls back to manual file upload) |
-| **Signature** | Topaz SigWeb Tablet | Topaz SigWeb SDK (loaded dynamically via `SigWebTablet.ts`) |
+| **Signature** | Topaz SigWeb Tablet (Model **T-LBK460-BSB-R**) | Topaz SigWeb SDK (loaded dynamically via `SigWebTablet.js`). Installer: `sigweb.exe` |
 | **Fingerprint** | Suprema Scanner | Local middleware API endpoint (`http://127.0.0.1:8080`) |
 | **ID Documents** | Flatbed scanner or Mobile upload | Native file input upload |
+
+> ℹ️ **Topaz T-LBK460-BSB-R Setup**: `sigweb.exe` (located in `C:\Users\USG\Downloads\sigweb.exe` or downloaded from [Topaz SigWeb Downloads](https://www.topazsystems.com/sigweb.html)) is the single required installer containing the driver, background service, and configuration utility. During setup, select **`SigLite 1x5 LCD`** and Connection **`BSB (Virtual Serial via USB)`**.
 
 ---
 

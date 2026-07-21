@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { RotateCw, Crop, Save, X, Check, X as XIcon } from 'lucide-react';
+import { RotateCw, Crop, Save, X, Check, X as XIcon, RotateCcw } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface ImageEditorProps {
@@ -15,6 +15,7 @@ export function ImageEditor({ imageUrl, onSave, onCancel, title = "Edit Image" }
   const [rotation, setRotation] = useState(0);
   const [cropMode, setCropMode] = useState(false);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
   const [cropBox, setCropBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragType, setDragType] = useState<'new' | 'handle' | 'move' | null>(null);
@@ -304,7 +305,35 @@ export function ImageEditor({ imageUrl, onSave, onCancel, title = "Edit Image" }
     setCurrentCursor('default');
   };
 
+  const handleResetToOriginal = () => {
+    if (originalImage) {
+      setImage(originalImage);
+      setRotation(0);
+      setCropMode(false);
+      setCropBox(null);
+    }
+  };
+
   const handleSave = () => {
+    if (cropBox && cropBox.width >= 10 && cropBox.height >= 10) {
+      applyCrop(cropBox);
+      setCropMode(false);
+      setTimeout(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              onSave(reader.result as string);
+            };
+            reader.readAsDataURL(blob);
+          }
+        }, 'image/png');
+      }, 50);
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.toBlob((blob) => {
@@ -336,7 +365,7 @@ export function ImageEditor({ imageUrl, onSave, onCancel, title = "Edit Image" }
         </div>
         <div className="space-y-4">
           {/* Tools */}
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center flex-wrap">
             <Button
               onClick={handleRotate}
               variant="outline"
@@ -354,6 +383,16 @@ export function ImageEditor({ imageUrl, onSave, onCancel, title = "Edit Image" }
             >
               <Crop className="w-4 h-4" />
               Crop
+            </Button>
+            <Button
+              onClick={handleResetToOriginal}
+              variant="outline"
+              size="sm"
+              className="gap-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+              title="Reset to original image"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset Original
             </Button>
           </div>
           {/* Crop Controls - only show in crop mode */}

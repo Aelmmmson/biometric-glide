@@ -578,7 +578,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
   const getAllImageConfigs = (data: NonNullable<SearchImagesResponse['data']>): StepImageConfig[] => {
     return [
       { key: 'photo', title: 'Photo', icon: Camera },
-      { key: 'accsign', title: 'Signature Name', icon: PenTool }, // Updated label
+      { key: 'accsign', title: 'Signature', icon: PenTool }, // Updated label
       { key: 'thumbprint1', title: 'Right Thumbprint', icon: Fingerprint },
       { key: 'thumbprint2', title: 'Left Thumbprint', icon: Fingerprint }
     ];
@@ -667,7 +667,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
     const data = section === 'approved' ? relData.approved : relData.unapproved;
     const allConfigs = [
       { key: 'photo', title: 'Photo', icon: Camera },
-      { key: 'accsign', title: 'Signature Name', icon: PenTool },
+      { key: 'accsign', title: 'Signature', icon: PenTool },
       { key: 'thumbprint1', title: 'Right Thumbprint', icon: Fingerprint },
       { key: 'thumbprint2', title: 'Left Thumbprint', icon: Fingerprint }
     ];
@@ -907,7 +907,7 @@ const Approval = ({ mode = 'relation', accountParams }: ApprovalProps) => {
                 className="mb-5 text-center"
               >
                 <h1 className="mb-3 text-4xl font-bold text-foreground">
-                  Image Approval System
+                  Image Approval
                 </h1>
                 <p className="text-lg text-muted-foreground">
                   Review and approve customer biometric data
