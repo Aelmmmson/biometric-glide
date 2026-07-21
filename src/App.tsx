@@ -21,7 +21,12 @@ const App = () => (
       <BiometricProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <Routes>
             {/* Root Standalone launcher Dashboard */}
             <Route path="/" element={<StandaloneSetup />} />
