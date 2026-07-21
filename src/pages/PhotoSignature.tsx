@@ -198,23 +198,46 @@ export function PhotoSignature({
   useEffect(() => {
     if (mode === 'update' && images && images.status === 'success' && images.data) {
       const data = images.data;
-      const source = (data.unapproved?.limit && (data.unapproved?.category || data.unapproved?.mandate))
+      const source = (data.unapproved?.mandate || data.unapproved?.category || data.unapproved?.limit)
         ? data.unapproved
         : data.approved;
 
-      const apiCategory = source?.category || source?.mandate;
+      const apiCategory = source?.mandate || source?.category;
       const apiLimit = source?.limit;
 
-      if (apiCategory && apiLimit && apiCategory !== '-' && apiCategory !== '--' && apiLimit !== '-' && apiLimit !== '--') {
+      let updatedMandate = state.params.mandate;
+      let updatedLimit = state.params.limit;
+      let hasChanges = false;
+
+      if (apiCategory && apiCategory !== '-' && apiCategory !== '--') {
         const normCategory = normalizeMandate(apiCategory);
         setInputMandate(normCategory);
         setSavedMandate(normCategory);
-        setInputLimit(apiLimit.toString());
-        setSavedLimit(apiLimit.toString());
+        updatedMandate = normCategory;
+        hasChanges = true;
+      }
+
+      if (apiLimit !== undefined && apiLimit !== null && apiLimit !== '-' && apiLimit !== '--') {
+        const limitStr = apiLimit.toString();
+        setInputLimit(limitStr);
+        setSavedLimit(limitStr);
+        updatedLimit = limitStr;
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
         setIsAuthModalSaved(true);
+        dispatch({
+          type: 'SET_PARAMS',
+          params: {
+            ...state.params,
+            mandate: updatedMandate,
+            limit: updatedLimit,
+          },
+        });
       }
     }
-  }, [mode, images]);
+  }, [mode, images, dispatch, state.params]);
 
   const hasPrefetched = useRef(false);
 
