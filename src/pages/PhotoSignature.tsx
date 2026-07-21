@@ -357,8 +357,8 @@ export function PhotoSignature({
     const finalLimit = (showAuthInputs || mode === 'update') ? inputLimit : state.params.limit;
     const finalMandate = normalizeMandate((showAuthInputs || mode === 'update') ? inputMandate : state.params.mandate);
 
-    // If no changes, just go to next step
-    if (!isPhotoChanged && !isSignatureChanged && state.data.photo && state.data.signature && (!showAuthInputs || (finalLimit === state.params.limit && finalMandate === state.params.mandate))) {
+    // In update mode, if no changes, just go to next step
+    if (mode === 'update' && !isPhotoChanged && !isSignatureChanged && (!showAuthInputs || (finalLimit === state.params.limit && finalMandate === state.params.mandate))) {
       if (isTabletActiveRef.current) {
         try {
           stopTablet();
@@ -371,7 +371,8 @@ export function PhotoSignature({
       return;
     }
 
-    if (!state.data.photo || !state.data.signature || isSubmitting) return;
+    if (mode !== 'update' && (!state.data.photo || !state.data.signature)) return;
+    if (isSubmitting) return;
 
     setIsSubmitting(true);
 
@@ -380,8 +381,8 @@ export function PhotoSignature({
       const { params } = state;
 
       const result = await submitFn({
-        photoData: state.data.photo!,
-        signatureData: state.data.signature!,
+        photoData: state.data.photo || '',
+        signatureData: state.data.signature || '',
         cus_no: '',
         batchNumber: params.batch || 'TEMP',
         capturedBy: params.capturedBy,
@@ -409,8 +410,8 @@ export function PhotoSignature({
             if (rels[rNo]) {
               rels[rNo].amtlimit = parseFloat(finalLimit) || 0;
               rels[rNo].signatoryLevel = finalMandate;
-              rels[rNo].photoCaptured = true;
-              rels[rNo].signatureCaptured = true;
+              if (state.data.photo) rels[rNo].photoCaptured = true;
+              if (state.data.signature) rels[rNo].signatureCaptured = true;
               localStorage.setItem('standalone_relations', JSON.stringify(rels));
             }
           }
@@ -451,7 +452,7 @@ export function PhotoSignature({
   };
 
   const isAuthValid = !showAuthInputs || (!!inputMandate && !!inputLimit && parseFloat(inputLimit) >= 0);
-  const canSubmit = !!state.data.photo && !!state.data.signature && isAuthValid;
+  const canSubmit = mode === 'update' ? isAuthValid : (!!state.data.photo && !!state.data.signature && isAuthValid);
 
   const initializeSigWeb = () => {
     const extendedWindow = window as unknown as ExtendedWindow;
@@ -785,7 +786,7 @@ export function PhotoSignature({
                       <img
                         src={state.data.signature}
                         alt="Signature"
-                        className="max-h-20 mx-auto border border-border rounded"
+                        className="max-h-40 mx-auto border border-border rounded"
                       />
                       <div className="absolute inset-0 bg-black/20 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <Eye className="w-6 h-6 text-white" />

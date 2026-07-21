@@ -39,7 +39,7 @@ export function ExistingImagesCard({
       <div className="flex justify-between items-center pb-2 border-b border-border/60">
         <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
           <ImageIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-          <span className="truncate">Existing Images</span>
+          <span className="truncate md:text-[8px]">Existing Images</span>
         </h3>
         <Button
           variant="ghost"
@@ -61,7 +61,7 @@ export function ExistingImagesCard({
         <div className="space-y-4">
           {/* Pending Review Section */}
           <div className="space-y-2">
-            <h4 className="font-extrabold text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md inline-block">
+            <h4 className="font-extrabold text-[10px] md:text-[9px] uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md inline-block">
               Pending Review
             </h4>
             <div className="grid grid-cols-2 gap-2">
@@ -131,7 +131,7 @@ export function ExistingImagesCard({
 
           {/* Approved Images Section */}
           <div className="space-y-2">
-            <h4 className="font-extrabold text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md inline-block">
+            <h4 className="font-extrabold text-[10px] md:text-[9px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md inline-block">
               Approved Images
             </h4>
             <div className="grid grid-cols-2 gap-2">

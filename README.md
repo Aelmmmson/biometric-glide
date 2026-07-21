@@ -7,7 +7,7 @@ This system integrates with a legacy PHP backend (`http://10.203.14.169/imaging/
 ## Core Modules & Features
 
 ### 1. Dual-Mode Coexistence Architecture
-* **Integrated x100 Mode**: Automatically routes requests to query Oracle core banking database views and packages using standard URL parameter schemes.
+* **Integrated (x100) Mode**: Automatically routes requests to query Oracle core banking database views and packages using standard URL parameter schemes.
 * **Standalone Mode**: Operates independently of core banking availability. Tellers can manually register accounts (`TB_STANDALONE_ACCOUNTS`) and signatory relations (`TB_STANDALONE_RELATIONS`) in a local PostgreSQL database, with frontend states cached in `localStorage`.
 * **Fallback Retrieval Layer**: Queries are resolved first against the local standalone database. If no record is found, the system automatically falls back to Oracle Core Banking, allowing 100% component and page reuse.
 

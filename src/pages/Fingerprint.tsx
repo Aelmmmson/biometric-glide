@@ -164,7 +164,7 @@ export function Fingerprint({ mode = 'capture', onNext }: FingerprintProps) {
     dispatch({ type: 'SET_STEP', step: state.currentStep - 1 });
   };
 
-  const canContinue = !!state.data.thumbprint1;
+  const canContinue = mode === 'update' ? true : !!state.data.thumbprint1;
 
   return (
     <>

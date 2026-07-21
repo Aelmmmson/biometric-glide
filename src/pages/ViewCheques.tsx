@@ -7,7 +7,7 @@ import {
     ShieldCheck, Info, LucideIcon, Banknote,
     Hash, FileText, Calendar, CheckCircle2,
     CreditCard, User, Building, Landmark,
-    AlertTriangle, Shield, Menu, X, Check, ZoomIn, Maximize2
+    AlertTriangle, Shield, Menu, X, Check, ZoomIn, ZoomOut, Maximize2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
@@ -170,44 +170,82 @@ const SignatoryCard = ({
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-primary whitespace-nowrap">Signatory {index + 1}</span>
                     {isActive && (
-                        <span className="text-[9px] font-black uppercase tracking-wider text-white bg-primary px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
-                            <Shield className="w-2.5 h-2.5 text-white" />
-                            Active
-                        </span>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="text-[9px] font-black uppercase tracking-wider text-white bg-primary px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shrink-0 cursor-help">
+                                    Eligible
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[10px] font-bold bg-slate-900 text-white">
+                                Active signatory authorized for this instrument
+                            </TooltipContent>
+                        </Tooltip>
                     )}
                     {isLimitExceeded && (
-                        <span className="text-[9px] font-black uppercase tracking-wider text-red-600 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0">
-                            <AlertTriangle className="w-3 h-3 text-red-600 animate-pulse" />
-                            <span className="hidden sm:inline">Exceeded</span>
-                        </span>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="text-[9px] font-black uppercase tracking-wider text-red-600 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0 cursor-help">
+                                    <AlertTriangle className="w-3 h-3 text-red-600 animate-pulse" />
+                                    <span className="hidden sm:inline">Exceeded</span>
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[10px] font-bold bg-slate-900 text-white">
+                                Instrument amount exceeds signatory limit of {new Intl.NumberFormat('en-US').format(sig.limit!)}
+                            </TooltipContent>
+                        </Tooltip>
                     )}
                 </div>
                 <div className="flex items-center gap-1">
-                    {/* Zoom toggle */}
+                    {/* Zoom out (-) */}
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
-                                    if (isFlipped) {
-                                        setIsZoomedBack(!isZoomedBack);
-                                    } else {
-                                        setIsZoomedFront(!isZoomedFront);
-                                    }
+                                    if (isFlipped) setIsZoomedBack(false);
+                                    else setIsZoomedFront(false);
                                 }}
+                                disabled={isFlipped ? !isZoomedBack : !isZoomedFront}
                                 className={`h-6 w-6 rounded-full flex items-center justify-center transition-all ${
                                     (isFlipped ? isZoomedBack : isZoomedFront) 
-                                        ? 'bg-primary text-white hover:bg-primary/95 shadow-sm' 
-                                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' 
+                                        : 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400'
                                 }`}
+                                title="Zoom out"
+                            >
+                                <ZoomOut className="w-3 h-3" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-[10px] font-bold">
+                            Zoom out specimen
+                        </TooltipContent>
+                    </Tooltip>
+
+                    {/* Zoom in (+) */}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    if (isFlipped) setIsZoomedBack(true);
+                                    else setIsZoomedFront(true);
+                                }}
+                                disabled={isFlipped ? isZoomedBack : isZoomedFront}
+                                className={`h-6 w-6 rounded-full flex items-center justify-center transition-all ${
+                                    !(isFlipped ? isZoomedBack : isZoomedFront) 
+                                        ? 'bg-primary text-white hover:bg-primary/95 shadow-sm' 
+                                        : 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400'
+                                }`}
+                                title="Zoom in"
                             >
                                 <ZoomIn className="w-3 h-3" />
                             </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="text-[10px] font-bold">
-                            {(isFlipped ? isZoomedBack : isZoomedFront) ? 'Zoom out' : 'Zoom in'}
+                            Zoom in specimen
                         </TooltipContent>
                     </Tooltip>
+
                     {/* Fullscreen modal */}
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -230,12 +268,17 @@ const SignatoryCard = ({
                 <div className="flex flex-col">
                     <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 mb-0.5">Sign Category</span>
                     <div className="flex items-center gap-1.5 min-w-0">
-                        <span className={`text-xs font-bold truncate ${isLimitExceeded ? 'text-red-600 font-bold' : 'text-slate-900'}`}>{sig.sign_category || 'N/A'}</span>
-                        {isLimitExceeded ? (
-                            <AlertTriangle className="w-3.5 h-3.5 text-red-600 animate-pulse shrink-0" />
-                        ) : (
-                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        )}
+                        <span className="text-xs font-bold truncate text-slate-900">{sig.sign_category || 'N/A'}</span>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="inline-flex items-center cursor-help">
+                                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[10px] font-bold bg-slate-900 text-white">
+                                Signatory category '{sig.sign_category || 'N/A'}' is valid & authorized for this mandate
+                            </TooltipContent>
+                        </Tooltip>
                     </div>
                 </div>
                 <div className="flex flex-col">
@@ -243,13 +286,31 @@ const SignatoryCard = ({
                     <div className="flex items-center gap-1.5 min-w-0">
                         <span className={`text-xs font-bold truncate ${isLimitExceeded ? 'text-red-600 font-bold' : 'text-slate-900'}`}>
                             {sig.limit !== undefined && sig.limit > 0 
-                                ? `SLE ${new Intl.NumberFormat('en-US').format(sig.limit)}` 
+                                ? `${new Intl.NumberFormat('en-US').format(sig.limit)}` 
                                 : 'No Limit'}
                         </span>
                         {isLimitExceeded ? (
-                            <AlertCircle className="w-3.5 h-3.5 text-red-600 animate-pulse shrink-0" />
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center cursor-help">
+                                        <AlertCircle className="w-3.5 h-3.5 text-red-600 animate-pulse shrink-0" />
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-[10px] font-bold bg-slate-900 text-white">
+                                    Cheque amount ({chequeAmountValue ? new Intl.NumberFormat('en-US').format(chequeAmountValue) : 'N/A'}) exceeds limit of {new Intl.NumberFormat('en-US').format(sig.limit!)}
+                                </TooltipContent>
+                            </Tooltip>
                         ) : (
-                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center cursor-help">
+                                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-[10px] font-bold bg-slate-900 text-white">
+                                    Cheque amount is within allowable signatory limit
+                                </TooltipContent>
+                            </Tooltip>
                         )}
                     </div>
                 </div>
@@ -273,11 +334,10 @@ const SignatoryCard = ({
                             <ZoomableImage 
                                 src={sig.signature} 
                                 alt={`Signature ${index + 1}`} 
-                                className="object-contain contrast-125 grayscale"
+                                className="object-contain"
                                 onImageClick={handleFlip}
-                                isZoomed={isActive ? (syncedZoom || isZoomedFront) : isZoomedFront}
-                                onZoomChange={isActive && syncedZoom ? undefined : setIsZoomedFront}
-                                coords={isActive && syncedZoom ? syncedCoords : undefined}
+                                isZoomed={isZoomedFront}
+                                onZoomChange={setIsZoomedFront}
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground/45 italic bg-slate-50">
@@ -323,7 +383,7 @@ const SignatoryCard = ({
                 <div className="flex flex-col items-center justify-center p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[140px]">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Signature</span>
                     {sig.signature ? (
-                        <img src={sig.signature} className="max-h-[100px] object-contain contrast-125 grayscale bg-white p-1 rounded border border-slate-200" alt={`Signature ${index + 1}`} />
+                        <img src={sig.signature} className="max-h-[100px] object-contain bg-white p-1 rounded border border-slate-200" alt={`Signature ${index + 1}`} />
                     ) : (
                         <span className="text-[9px] text-slate-400 italic">No Signature</span>
                     )}
@@ -351,6 +411,8 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
   const [isSandboxOpen, setIsSandboxOpen] = useState(false);
   const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
   const [verificationDecision, setVerificationDecision] = useState<'corresponds' | 'mismatch' | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [pendingDecision, setPendingDecision] = useState<'corresponds' | 'mismatch' | null>(null);
   
   // Collapsible Sidebar & Validation states
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -704,7 +766,11 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
                     <TooltipProvider delayDuration={200}>
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-full p-1 shadow-sm">
                         <button 
-                            onClick={() => setVerificationDecision('corresponds')}
+                            onClick={() => {
+                                setVerificationDecision('corresponds');
+                                setPendingDecision('corresponds');
+                                setIsConfirmModalOpen(true);
+                            }}
                             className={`h-7 px-3.5 rounded-full text-xs font-bold transition-all ${
                                 verificationDecision === 'corresponds' 
                                     ? 'bg-emerald-600 text-white shadow-sm' 
@@ -714,7 +780,11 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
                             Corresponds
                         </button>
                         <button 
-                            onClick={() => setVerificationDecision('mismatch')}
+                            onClick={() => {
+                                setVerificationDecision('mismatch');
+                                setPendingDecision('mismatch');
+                                setIsConfirmModalOpen(true);
+                            }}
                             className={`h-7 px-3.5 rounded-full text-xs font-bold transition-all ${
                                 verificationDecision === 'mismatch' 
                                     ? 'bg-slate-800 text-white shadow-sm' 
@@ -727,7 +797,10 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button
-                                        onClick={() => handleMandateValidation(verificationDecision === 'corresponds' ? 'N' : 'Y')}
+                                        onClick={() => {
+                                            setPendingDecision(verificationDecision);
+                                            setIsConfirmModalOpen(true);
+                                        }}
                                         className="h-7 w-7 rounded-full bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center transition-all shadow-md ml-0.5"
                                     >
                                         <Check className="w-4 h-4" />
@@ -841,20 +914,24 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
 
             {/* COLUMN 2: MANDATE VERIFICATION AREA */}
             <div className="flex flex-col gap-3 md:min-h-0">
-                <div className="flex items-center justify-between px-1 flex-shrink-0">
+                <div className="flex items-center justify-between px-1 flex-shrink-0 min-h-[32px]">
                     <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-primary" />
-                        <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-primary">Mandate Verification</h3>
+                        <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-primary">
+                                Account Mandate
+                            </h3>
+                            <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 inline-flex items-center">
+                                {signatures.length} {signatures.length === 1 ? 'Signatory' : 'Signatories'}
+                            </span>
+                        </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                         {accountMandate && (
-                            <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/5 px-2.5 py-0.5 rounded-full border border-primary/10">
+                            <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/5 px-2.5 py-0.5 rounded-full border border-primary/10 inline-flex items-center">
                                 {accountMandate}
                             </span>
                         )}
-                        <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
-                            {signatures.length} {signatures.length === 1 ? 'Mandate' : 'Mandates'}
-                        </span>
                     </div>
                 </div>
                 <div className="flex-1 flex flex-col min-h-fit md:min-h-0 md:overflow-hidden">
@@ -1051,6 +1128,59 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
             </Button>
         </div>
 
+        {/* CONFIRMATION MODAL FOR CORRESPONDS / MISMATCH */}
+        {isConfirmModalOpen && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[100] p-4">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-border"
+                >
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                            pendingDecision === 'corresponds' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                        }`}>
+                            {pendingDecision === 'corresponds' ? <Check className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-foreground">Confirm Decision</h3>
+                            <p className="text-xs text-muted-foreground">Verification Audit Protocol</p>
+                        </div>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
+                        Are you sure you want to mark this cheque signature as <strong className={pendingDecision === 'corresponds' ? 'text-emerald-600 font-extrabold' : 'text-slate-900 font-extrabold'}>{pendingDecision === 'corresponds' ? 'CORRESPONDS' : 'MISMATCH'}</strong> and submit the record?
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => { 
+                                setIsConfirmModalOpen(false); 
+                                setPendingDecision(null); 
+                                setVerificationDecision(null);
+                            }}
+                            className="rounded-full text-xs font-bold px-4"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setIsConfirmModalOpen(false);
+                                if (pendingDecision) {
+                                    setVerificationDecision(pendingDecision);
+                                    handleMandateValidation(pendingDecision === 'corresponds' ? 'N' : 'Y');
+                                }
+                            }}
+                            className={`rounded-full text-xs font-bold px-5 text-white ${
+                                pendingDecision === 'corresponds' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-900 hover:bg-slate-800'
+                            }`}
+                        >
+                            Confirm & Submit
+                        </Button>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+
         {/* FUTURE SANDBOX MODAL (COMMENTED FOR NOW)
         <SandboxVerifyModal 
             isOpen={isSandboxOpen} 
@@ -1060,7 +1190,7 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
 
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
-              @page { size: portrait; margin: 1cm; }
+              @page { size: portrait; margin: 0; }
               #main-app-container {
                   display: none !important;
               }
@@ -1070,6 +1200,7 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
                   font-family: sans-serif !important; 
                   height: auto !important; 
                   overflow: visible !important; 
+                  padding: 1cm !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
               }
@@ -1256,7 +1387,7 @@ const ViewCheques = ({ chequeNumber: propChequeNumber }: ViewChequesProps) => {
                       </tr>
                       <tr className="border-b border-slate-200">
                           <td className="py-2.5 font-bold text-slate-500">Cheque Amount</td>
-                          <td className="py-2.5 font-medium">: SLE {chequeData?.chequeAmount || '---'}</td>
+                          <td className="py-2.5 font-medium">: {chequeData?.chequeAmount || '---'}</td>
                           <td className="py-2.5 font-bold text-slate-500">Clearing Date</td>
                           <td className="py-2.5 font-medium">: {chequeData?.postingDate || '---'}</td>
                       </tr>

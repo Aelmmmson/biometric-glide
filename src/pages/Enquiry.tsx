@@ -198,7 +198,7 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
             <div className="flex flex-wrap items-center gap-3 shrink-0">
               <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col">
                 <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider mb-0.5">
-                  {fetchType === 'account' ? 'Account Number' : 'Relation ID'}
+                  {fetchType === 'account' ? 'Account Number' : 'Account ID'}
                 </span>
                 <span className="text-sm font-extrabold text-slate-800 font-mono">{id}</span>
               </div>
@@ -299,11 +299,11 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
                           <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-1.5">
                             <Fingerprint className="w-4 h-4 text-blue-500" /> Biometric Data
                           </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            {detail.pix?.trim() && renderBiometricCard(detail.pix, 'Portrait Photo', ImageIcon)}
-                            {detail.signature?.trim() && renderBiometricCard(detail.signature, 'Signature Photo', FileText)}
-                            {detail.fingerprint_one?.trim() && renderBiometricCard(detail.fingerprint_one, 'Right Thumbprint', Fingerprint)}
-                            {detail.fingerprint_two?.trim() && renderBiometricCard(detail.fingerprint_two, 'Left Thumbprint', Fingerprint)}
+                          <div className="flex flex-wrap justify-center gap-4">
+                            {detail.pix?.trim() && <div className="w-full sm:w-[240px] flex-shrink-0">{renderBiometricCard(detail.pix, 'Portrait Photo', ImageIcon)}</div>}
+                            {detail.signature?.trim() && <div className="w-full sm:w-[240px] flex-shrink-0">{renderBiometricCard(detail.signature, 'Signature Photo', FileText)}</div>}
+                            {detail.fingerprint_one?.trim() && <div className="w-full sm:w-[240px] flex-shrink-0">{renderBiometricCard(detail.fingerprint_one, 'Right Thumbprint', Fingerprint)}</div>}
+                            {detail.fingerprint_two?.trim() && <div className="w-full sm:w-[240px] flex-shrink-0">{renderBiometricCard(detail.fingerprint_two, 'Left Thumbprint', Fingerprint)}</div>}
                           </div>
                         </div>
                       ) : (
@@ -315,15 +315,15 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
                       {/* Documents Row */}
                       {hasDocs && (
                         <div className="pt-4 border-t border-slate-100 space-y-3.5">
-                          <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-1.5">
+                          <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-1.5 justify-center">
                             <FileText className="w-4 h-4 text-indigo-500" /> Scanned Identification Documents
                           </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="flex flex-wrap justify-center gap-4">
                             {detail.docs.flatMap((doc: DocumentData) => [
                               doc.sides.front && { img: doc.sides.front, title: `${doc.type.replace(/_/g, ' ')} Front` },
                               doc.sides.back && { img: doc.sides.back, title: `${doc.type.replace(/_/g, ' ')} Back` },
                             ].filter(Boolean)).map((item, docIndex) => (
-                              <div key={docIndex}>
+                              <div key={docIndex} className="w-full sm:w-[240px] flex-shrink-0">
                                 {renderBiometricCard(item.img, item.title, FileText)}
                               </div>
                             ))}
