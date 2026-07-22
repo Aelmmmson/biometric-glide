@@ -9,6 +9,7 @@ import {
   Landmark,
   ShieldCheck,
   UserCheck,
+  UserX,
   Download,
   ZoomIn,
   Fingerprint
@@ -178,7 +179,7 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
           <div className="bg-white/80 backdrop-blur-md rounded-3xl border border-slate-200/80 p-6 md:p-8 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3.5">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100/50 text-[10px] font-bold tracking-wider uppercase leading-none">
-                {/* <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> */}
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                 Account Enquiry Console
               </div>
 
@@ -186,10 +187,10 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
                 <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight leading-none">
                   {fetchType === 'account' ? 'Account Enquiry' : 'Account Profile'}
                 </h1>
-                {imageData?.account_name && (
+                {(imageData?.name || imageData?.account_name) && (
                   <p className="text-base font-bold text-slate-700 mt-2 flex items-center gap-2">
                     <UserCheck className="w-4 h-4 text-emerald-500" />
-                    Account Description: {imageData.account_name}
+                    {imageData.name ? `Customer Name: ${imageData.name}` : `Account Description: ${imageData.account_name}`}
                   </p>
                 )}
               </div>
@@ -198,7 +199,7 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
             <div className="flex flex-wrap items-center gap-3 shrink-0">
               <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col">
                 <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider mb-0.5">
-                  {fetchType === 'account' ? 'Account Number' : 'Relation No'}
+                  {fetchType === 'account' || fetchType === 'getimages' ? 'Account No' : 'Relation No'}
                 </span>
                 <span className="text-sm font-extrabold text-slate-800 font-mono">
                   {id && (id.length > 18 || /[%=\\+\\/]/.test(id)) 
@@ -219,31 +220,87 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
 
         {/* Content Records */}
         <div className="max-w-6xl mx-auto">
-          {loading ? (
-            <div className="min-h-[40vh] flex flex-col items-center justify-center space-y-4">
-              <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-              <p className="text-sm text-slate-500 font-semibold">Retrieving biometric profiles...</p>
-            </div>
-          ) : error ? (
-            <Card className="p-8 text-center max-w-md mx-auto rounded-3xl border-slate-200/80 shadow-md">
-              <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Enquiry Error</h3>
-              <p className="text-xs text-slate-500 leading-relaxed mb-5">{error}</p>
-              <Button onClick={fetchImages} className="rounded-full bg-blue-600 hover:bg-blue-700 text-xs font-bold px-6 py-2.5 shadow-sm text-white">
-                Retry Connection
-              </Button>
-            </Card>
-          ) : !imageData || !imageData.enq_details || imageData.enq_details.length === 0 ? (
-            <Card className="p-12 text-center rounded-3xl border-slate-200/80 shadow-md bg-white">
-              <ImageIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-slate-900 mb-1">No Biometric Records Found</h3>
-              <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-                Biometric and identification data has not been captured for this customer setup yet.
-              </p>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 gap-8">
-              {imageData.enq_details.map((detail, index) => {
+          {(() => {
+            const hasName = !!(imageData?.name?.trim() || imageData?.account_name?.trim());
+            const hasImagesInPayload = !!(
+              imageData?.unapproved?.photo?.trim() || imageData?.approved?.photo?.trim() ||
+              imageData?.unapproved?.accsign?.trim() || imageData?.approved?.accsign?.trim() ||
+              imageData?.unapproved?.thumbprint1?.trim() || imageData?.approved?.thumbprint1?.trim() ||
+              imageData?.unapproved?.thumbprint2?.trim() || imageData?.approved?.thumbprint2?.trim() ||
+              (imageData?.unapproved?.documents && imageData.unapproved.documents.length > 0) ||
+              (imageData?.approved?.documents && imageData.approved.documents.length > 0)
+            );
+
+            const detailsList = imageData?.enq_details && imageData.enq_details.length > 0
+              ? imageData.enq_details
+              : (hasName || hasImagesInPayload)
+                ? [{
+                    relation_no: imageData.relation_no || id,
+                    relation_name: imageData.name || imageData.account_name || '',
+                    pix: imageData.unapproved?.photo || imageData.approved?.photo || undefined,
+                    signature: imageData.unapproved?.accsign || imageData.approved?.accsign || undefined,
+                    fingerprint_one: imageData.unapproved?.thumbprint1 || imageData.approved?.thumbprint1 || undefined,
+                    fingerprint_two: imageData.unapproved?.thumbprint2 || imageData.approved?.thumbprint2 || undefined,
+                    limit: parseFloat((imageData.unapproved?.limit || imageData.approved?.limit || '0').toString()) || undefined,
+                    sign_category: imageData.unapproved?.category || imageData.unapproved?.mandate || imageData.approved?.category || imageData.approved?.mandate || undefined,
+                    docs: (imageData.unapproved?.documents?.length ? imageData.unapproved.documents : imageData.approved?.documents) || []
+                  }]
+                : [];
+
+            if (loading) {
+              return (
+                <div className="min-h-[40vh] flex flex-col items-center justify-center space-y-4">
+                  <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+                  <p className="text-sm text-slate-500 font-semibold">Retrieving biometric profiles...</p>
+                </div>
+              );
+            }
+
+            if (error) {
+              return (
+                <Card className="p-8 text-center max-w-md mx-auto rounded-3xl border-slate-200/80 shadow-md">
+                  <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">Enquiry Error</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed mb-5">{error}</p>
+                  <Button onClick={fetchImages} className="rounded-full bg-blue-600 hover:bg-blue-700 text-xs font-bold px-6 py-2.5 shadow-sm text-white">
+                    Retry Connection
+                  </Button>
+                </Card>
+              );
+            }
+
+            if (detailsList.length === 0) {
+              const targetType = (fetchType === 'account' || fetchType === 'getimages') ? 'Account' : 'Relation';
+              const displayId = id && (id.length > 18 || /[%=\\+\\/]/.test(id)) ? 'Encrypted Record' : id;
+
+              return (
+                <Card className="p-10 text-center rounded-3xl border-slate-200/80 shadow-md bg-white max-w-xl mx-auto space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto text-slate-400">
+                    <UserX className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-slate-900">No Existing Customer Data Found</h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                      No customer name or biometric record exists for {targetType} <span className="font-mono font-bold text-slate-700">#{displayId}</span>.
+                    </p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-[11px] text-slate-500 text-left space-y-1.5">
+                    <p className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      Possible Reasons:
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 text-slate-500 pl-1">
+                      <li>The {targetType.toLowerCase()} number <span className="font-mono text-slate-700 font-semibold">{displayId}</span> does not exist in the core system.</li>
+                      <li>The record exists, but no customer name or biometric specimens (photo, signature, fingerprints) have been registered yet.</li>
+                    </ul>
+                  </div>
+                </Card>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 gap-8">
+                {detailsList.map((detail, index) => {
                 const name = detail.relation_name || `Signatory #${index + 1}`;
                 const firstInitial = detail.relation_name ? detail.relation_name.charAt(0).toUpperCase() : '';
                 const parts = detail.relation_name?.trim().split(/\s+/) || [];
@@ -339,7 +396,8 @@ const Enquiry = ({ id, fetchType = 'relation' }: EnquiryProps) => {
                 );
               })}
             </div>
-          )}
+          );
+        })()}
         </div>
 
         {/* Back to Top */}

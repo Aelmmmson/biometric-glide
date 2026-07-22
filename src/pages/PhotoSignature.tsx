@@ -194,9 +194,12 @@ export function PhotoSignature({
     }
   }, [mode]);
 
+  const hasExtractedApiParams = useRef(false);
+
   // Extract category and limit from existing images in update mode
   useEffect(() => {
-    if (mode === 'update' && images && images.status === 'success' && images.data) {
+    if (mode === 'update' && images && images.status === 'success' && images.data && !hasExtractedApiParams.current) {
+      hasExtractedApiParams.current = true;
       const data = images.data;
       const source = (data.unapproved?.mandate || data.unapproved?.category || data.unapproved?.limit)
         ? data.unapproved
@@ -205,28 +208,33 @@ export function PhotoSignature({
       const apiCategory = source?.mandate || source?.category;
       const apiLimit = source?.limit;
 
-      let updatedMandate = state.params.mandate;
-      let updatedLimit = state.params.limit;
-      let hasChanges = false;
+      const hasValidApiCategory = !!(apiCategory && apiCategory.toString().trim() !== '' && apiCategory !== '-' && apiCategory !== '--');
+      const hasValidApiLimit = !!(apiLimit !== undefined && apiLimit !== null && apiLimit.toString().trim() !== '' && apiLimit !== '-' && apiLimit !== '--');
 
-      if (apiCategory && apiCategory !== '-' && apiCategory !== '--') {
-        const normCategory = normalizeMandate(apiCategory);
-        setInputMandate(normCategory);
-        setSavedMandate(normCategory);
-        updatedMandate = normCategory;
-        hasChanges = true;
-      }
+      if (hasValidApiCategory || hasValidApiLimit) {
+        let updatedMandate = state.params.mandate;
+        let updatedLimit = state.params.limit;
 
-      if (apiLimit !== undefined && apiLimit !== null && apiLimit !== '-' && apiLimit !== '--') {
-        const limitStr = apiLimit.toString();
-        setInputLimit(limitStr);
-        setSavedLimit(limitStr);
-        updatedLimit = limitStr;
-        hasChanges = true;
-      }
+        if (hasValidApiCategory) {
+          const normCategory = normalizeMandate(apiCategory!.toString());
+          setInputMandate(normCategory);
+          setSavedMandate(normCategory);
+          updatedMandate = normCategory;
+        }
 
-      if (hasChanges) {
-        setIsAuthModalSaved(true);
+        if (hasValidApiLimit) {
+          const limitStr = apiLimit!.toString();
+          setInputLimit(limitStr);
+          setSavedLimit(limitStr);
+          updatedLimit = limitStr;
+        }
+
+        if (hasValidApiCategory && hasValidApiLimit) {
+          setIsAuthModalSaved(true);
+        } else {
+          setIsAuthModalSaved(false);
+        }
+
         dispatch({
           type: 'SET_PARAMS',
           params: {
@@ -235,9 +243,26 @@ export function PhotoSignature({
             limit: updatedLimit,
           },
         });
+      } else {
+        // API explicitly returned no category and no limit for this relation.
+        // Prompt user for Authorization Settings by opening the modal!
+        setInputMandate('');
+        setSavedMandate('');
+        setInputLimit('');
+        setSavedLimit('');
+        setIsAuthModalSaved(false);
+
+        dispatch({
+          type: 'SET_PARAMS',
+          params: {
+            ...state.params,
+            mandate: '',
+            limit: '',
+          },
+        });
       }
     }
-  }, [mode, images, dispatch, state.params]);
+  }, [mode, images]);
 
   const hasPrefetched = useRef(false);
 

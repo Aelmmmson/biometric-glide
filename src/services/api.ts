@@ -64,9 +64,31 @@ export interface EnqDetail {
 }
 
 export interface EnquiryData {
-  account_mandate: string;
-  enq_details: EnqDetail[];
+  account_mandate?: string;
+  enq_details?: EnqDetail[];
   account_name?: string;
+  name?: string;
+  relation_no?: string;
+  approved?: {
+    photo?: string;
+    accsign?: string;
+    documents?: DocumentData[];
+    thumbprint1?: string;
+    thumbprint2?: string;
+    limit?: string | number;
+    mandate?: string;
+    category?: string;
+  };
+  unapproved?: {
+    photo?: string;
+    accsign?: string;
+    documents?: DocumentData[];
+    thumbprint1?: string;
+    thumbprint2?: string;
+    limit?: string | number;
+    mandate?: string;
+    category?: string;
+  };
 }
 
 export interface SearchImagesResponse {
@@ -926,6 +948,65 @@ export const searchImages = async (relationno: string): Promise<SearchImagesResp
   }
 };
 
+// Helper to normalize flat top-level customer data into enq_details array if missing
+const normalizeEnquiryPayload = (result: any, defaultId: string): EnquiryData => {
+  if (!result) return { enq_details: [] };
+
+  if (result.enq_details && Array.isArray(result.enq_details) && result.enq_details.length > 0) {
+    return result;
+  }
+
+  // If payload contains top-level customer details (name, relation_no, approved, unapproved)
+  if (result.name || result.relation_no || result.approved || result.unapproved) {
+    const unapp = result.unapproved || {};
+    const app = result.approved || {};
+    const source = (unapp.limit || unapp.category || unapp.mandate) ? unapp : app;
+
+    const relNo = result.relation_no || defaultId;
+    const relName = (result.name || result.account_name || '').trim();
+
+    const hasBiometricImages = !!(
+      unapp.photo?.trim() || app.photo?.trim() ||
+      unapp.accsign?.trim() || app.accsign?.trim() ||
+      unapp.thumbprint1?.trim() || app.thumbprint1?.trim() ||
+      unapp.thumbprint2?.trim() || app.thumbprint2?.trim() ||
+      (unapp.documents && Array.isArray(unapp.documents) && unapp.documents.length > 0) ||
+      (app.documents && Array.isArray(app.documents) && app.documents.length > 0)
+    );
+
+    const hasCustomerName = relName.length > 0;
+
+    if (hasCustomerName || hasBiometricImages) {
+      const limitVal = source.limit ? parseFloat(source.limit.toString()) : undefined;
+
+      return {
+        ...result,
+        name: relName,
+        relation_no: relNo,
+        account_name: result.account_name || (relName ? `${relName} Account` : undefined),
+        account_mandate: result.account_mandate || source.mandate || undefined,
+        enq_details: [
+          {
+            relation_no: relNo,
+            relation_name: relName || `Customer #${relNo}`,
+            pix: unapp.photo || app.photo || undefined,
+            signature: unapp.accsign || app.accsign || undefined,
+            fingerprint_one: unapp.thumbprint1 || app.thumbprint1 || undefined,
+            fingerprint_two: unapp.thumbprint2 || app.thumbprint2 || undefined,
+            limit: isNaN(limitVal as number) ? undefined : limitVal,
+            sign_category: source.category || source.mandate || undefined,
+            docs: (unapp.documents && Array.isArray(unapp.documents) && unapp.documents.length > 0)
+              ? unapp.documents
+              : (app.documents && Array.isArray(app.documents) ? app.documents : [])
+          }
+        ]
+      };
+    }
+  }
+
+  return { ...result, enq_details: [] };
+};
+
 // Fetch customer images for enquiry phase
 export const enquiryImages = async (customerId: string): Promise<EnquiryImagesResponse> => {
   try {
@@ -979,6 +1060,20 @@ export const enquiryImages = async (customerId: string): Promise<EnquiryImagesRe
       }
     }
 
+    try {
+      const searchRes = await searchImages(customerId);
+      if (searchRes.status === 'success' && searchRes.data) {
+        const normalizedData = normalizeEnquiryPayload(searchRes.data, customerId);
+        return {
+          status: 'success',
+          message: 'Images retrieved successfully',
+          data: normalizedData
+        };
+      }
+    } catch (e) {
+      console.warn('searchImages in enquiryImages failed, trying view_relation_details:', e);
+    }
+
     const response = await fetch(`${getBaseUrl()}/api/view_relation_details-${customerId}`, {
       method: 'GET',
       headers: {
@@ -997,10 +1092,11 @@ export const enquiryImages = async (customerId: string): Promise<EnquiryImagesRe
     }
 
     const result = await response.json();
+    const normalizedData = normalizeEnquiryPayload(result, customerId);
     return {
       status: 'success',
       message: 'Images retrieved successfully',
-      data: result
+      data: normalizedData
     };
   } catch (error) {
     const uiError = handleSystemError(error, 'api.enquiryImages');
@@ -1041,10 +1137,11 @@ export const getImagesByAccount = async (account: string): Promise<EnquiryImages
     }
 
     const result = await response.json();
+    const normalizedData = normalizeEnquiryPayload(result, account);
     return {
       status: 'success',
       message: 'Images retrieved successfully',
-      data: result
+      data: normalizedData
     };
   } catch (error) {
     const uiError = handleSystemError(error, 'api.getImagesByAccount');
@@ -1085,10 +1182,11 @@ export const viewRelationDetailsFromAccount = async (encryptedAcctNo: string): P
     }
 
     const result = await response.json();
+    const normalizedData = normalizeEnquiryPayload(result, encryptedAcctNo);
     return {
       status: 'success',
       message: 'Images retrieved successfully',
-      data: result
+      data: normalizedData
     };
   } catch (error) {
     const uiError = handleSystemError(error, 'api.viewRelationDetailsFromAccount');
