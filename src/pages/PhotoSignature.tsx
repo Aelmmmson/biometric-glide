@@ -696,16 +696,18 @@ export function PhotoSignature({
                 transition={{ duration: 0.2 }}
                 className="relative border-2 border-dashed border-border rounded-xl p-6 text-center bg-accent/50 min-h-[340px] flex-1 flex flex-col items-center justify-center"
               >
-                <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-background rounded-full p-1 flex shadow-sm">
+                <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-background rounded-full p-1 flex shadow-sm z-20 pointer-events-auto select-none border border-slate-200/60">
                   <button
+                    type="button"
                     onClick={() => setPhotoMode('capture')}
-                    className={`px-3 py-1 rounded-full text-[0.65rem] font-medium transition-colors ${photoMode === 'capture' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                    className={`px-3.5 py-1 rounded-full text-[0.65rem] font-bold cursor-pointer transition-all ${photoMode === 'capture' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
                   >
                     Capture
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPhotoMode('upload')}
-                    className={`px-3 py-1 rounded-full text-[0.65rem] font-medium transition-colors ${photoMode === 'upload' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                    className={`px-3.5 py-1 rounded-full text-[0.65rem] font-bold cursor-pointer transition-all ${photoMode === 'upload' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
                   >
                     Upload
                   </button>
@@ -823,16 +825,18 @@ export function PhotoSignature({
                 transition={{ duration: 0.2 }}
                 className="relative border-2 border-dashed border-border rounded-xl p-6 bg-accent/50 min-h-[340px] flex-1 flex flex-col items-center justify-center"
               >
-                <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-background rounded-full p-1 flex shadow-sm">
+                <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-background rounded-full p-1 flex shadow-sm z-20 pointer-events-auto select-none border border-slate-200/60">
                   <button
+                    type="button"
                     onClick={() => setSignatureMode('draw')}
-                    className={`px-3 py-1 rounded-full text-[0.65rem] font-medium transition-colors ${signatureMode === 'draw' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                    className={`px-3.5 py-1 rounded-full text-[0.65rem] font-bold cursor-pointer transition-all ${signatureMode === 'draw' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
                   >
                     Draw
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSignatureMode('upload')}
-                    className={`px-3 py-1 rounded-full text-[0.65rem] font-medium transition-colors ${signatureMode === 'upload' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                    className={`px-3.5 py-1 rounded-full text-[0.65rem] font-bold cursor-pointer transition-all ${signatureMode === 'upload' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
                   >
                     Upload
                   </button>
